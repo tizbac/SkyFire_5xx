@@ -66,8 +66,15 @@ else()
   )
 endif()
 
-add_library(g3dlib STATIC ${g3dlib_STAT_SRCS})
+IF ( NOT STATIC_LINK )
+add_library(g3dlib SHARED ${g3dlib_STAT_SRCS})
 
 target_link_libraries(g3dlib
   ${ZLIB_LIBRARIES}
 )
+install(TARGETS g3dlib DESTINATION lib)
+
+ELSE( NOT STATIC_LINK )
+add_library(g3dlib STATIC ${g3dlib_STAT_SRCS})
+
+ENDIF(NOT STATIC_LINK )

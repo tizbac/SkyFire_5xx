@@ -336,10 +336,15 @@ set_source_files_properties(Atomic_Op_Sparc.c Rtems_init.c PROPERTIES LANGUAGE C
 
 add_definitions(-DACE_BUILD_DLL)
 
+if ( NOT STATIC_LINK )
 add_library(ace SHARED
   ${ace_STAT_SRCS}
   ${ace_PCH_SRC}
 )
+install(TARGETS ace RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}")
+else ( NOT STATIC_LINK )
+add_library(ace STATIC ${ace_STAT_SRCS})
+endif ( NOT STATIC_LINK )
 
 if (MINGW) # GCC ignores "#prama comment"
   target_link_libraries(ace ws2_32 iphlpapi netapi32 mswsock)

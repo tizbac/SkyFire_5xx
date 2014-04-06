@@ -245,10 +245,17 @@ include_directories(
   ${OPENSSL_INCLUDE_DIR}
 )
 
+if ( NOT STATIC_LINK )
+add_library ( game SHARED ${game_STAT_SRCS})
+target_link_libraries(game shared scripts pfboostsystem collision g3dlib gsoap pfboostthread recastnavigation detour pfboostregex ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
+
+else ( NOT STATIC_LINK )
 add_library(game STATIC
   ${game_STAT_SRCS}
   ${game_STAT_PCH_SRC}
 )
+endif ( NOT STATIC_LINK )
+
 
 add_dependencies(game revision.h)
 
@@ -256,3 +263,7 @@ add_dependencies(game revision.h)
 if (USE_COREPCH)
   add_cxx_pch(game ${game_STAT_PCH_HDR} ${game_STAT_PCH_SRC})
 endif ()
+
+if ( NOT STATIC_LINK )
+install(TARGETS game DESTINATION lib)
+endif ( NOT STATIC_LINK )

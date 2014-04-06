@@ -89,14 +89,20 @@ include_directories(
   ${OPENSSL_INCLUDE_DIR}
 )
 
+IF ( NOT STATIC_LINK )
 add_library(shared STATIC
   ${shared_STAT_SRCS}
   ${shared_STAT_PCH_SRC}
 )
 
 target_link_libraries(shared
-  ${ACE_LIBRARY}
+  ${ACE_LIBRARY} g3dlib gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} 
 )
+install(TARGETS shared DESTINATION lib)
+ELSE ( NOT STATIC_LINK )
+add_library(shared STATIC ${shared_STAT_SRCS})
+
+ENDIF ( NOT STATIC_LINK )
 
 # Generate precompiled header
 if (USE_COREPCH)

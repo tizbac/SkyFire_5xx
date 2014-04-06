@@ -57,5 +57,9 @@ include_directories(
 )
 
 add_definitions(-D_GNU_SOURCE -D_REENTRANT)
-
-add_library(jemalloc STATIC ${jemalloc_STAT_SRC})
+if ( NOT STATIC_LINK )
+add_library(jemalloc SHARED ${sources})
+install(TARGETS jemalloc DESTINATION lib)
+else ( NOT STATIC_LINK )
+add_library(jemalloc STATIC ${sources})
+endif ( NOT STATIC_LINK)

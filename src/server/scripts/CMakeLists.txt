@@ -176,10 +176,15 @@ include_directories(
   ${MYSQL_INCLUDE_DIR}
 )
 
+IF ( NOT STATIC_LINK )
+add_library(scripts SHARED ${scripts_STAT_SRCS})
+install(TARGETS scripts DESTINATION lib)
+ELSE ( NOT STATIC_LINK )
 add_library(scripts STATIC
   ${scripts_STAT_SRCS}
   ${scripts_STAT_PCH_SRC}
 )
+ENDIF ( NOT STATIC_LINK )
 
 add_dependencies(scripts revision.h)
 

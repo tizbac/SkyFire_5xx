@@ -79,6 +79,11 @@ include_directories(
   ${MYSQL_INCLUDE_DIR}
 )
 
+if ( NOT STATIC_LINK )
+add_library(collision SHARED ${collision_STAT_SRCS})
+target_link_libraries(collision pfboostsystem shared gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
+install(TARGETS collision DESTINATION lib)
+ELSE ( NOT STATIC_LINK )
 add_library(collision STATIC
   ${collision_STAT_SRCS}
   ${collision_STAT_PCH_SRC}
@@ -87,6 +92,7 @@ add_library(collision STATIC
 target_link_libraries(collision
   shared
 )
+endif ( NOT STATIC_LINK )
 
 # Generate precompiled header
 if (USE_COREPCH)

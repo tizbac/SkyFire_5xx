@@ -173,12 +173,34 @@ endif()
 
 set_target_properties(worldserver PROPERTIES LINK_FLAGS "${worldserver_LINK_FLAGS}")
 
+IF ( NOT STATIC_LINK )
 target_link_libraries(worldserver
   game
+  pfboostsystem
+  
+  ${JEMALLOC_LIBRARY}
+  ${READLINE_LIBRARY}
+  ${TERMCAP_LIBRARY}
+  ${ACE_LIBRARY}
+  ${MYSQL_LIBRARY}
+  ${OPENSSL_LIBRARIES}
+  ${OPENSSL_EXTRA_LIBRARIES}
+  ${ZLIB_LIBRARIES}
+  ${OSX_LIBS}
+)
+ELSE ( NOT STATIC_LINK )
+target_link_libraries(worldserver
+  game
+  pfboostsystem
   shared
-  scripts
+  pfboostregex
+  pfboostthread
+  pfboostsystem
+  scripts #TODO: Linkare solo se abilitati gli script
   collision
   g3dlib
+  recastnavigation
+  detour
   gsoap
   Detour
   ${JEMALLOC_LIBRARY}
@@ -190,6 +212,8 @@ target_link_libraries(worldserver
   ${ZLIB_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}
 )
+
+ENDIF ( NOT STATIC_LINK )
 
 if( WIN32 )
   if ( MSVC )
