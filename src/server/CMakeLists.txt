@@ -24,7 +24,7 @@ if( SERVERS )
   add_subdirectory(authserver)
   add_subdirectory(scripts)
   add_subdirectory(worldserver)
-  add_subdirectory(pathfinding)
+
 else()
   if( TOOLS )
     add_subdirectory(collision)

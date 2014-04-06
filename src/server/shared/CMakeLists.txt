@@ -9,10 +9,6 @@
 # WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-if( USE_COREPCH )
-  include_directories(${CMAKE_CURRENT_BINARY_DIR})
-endif()
-
 file(GLOB_RECURSE sources_Configuration Configuration/*.cpp Configuration/*.h)
 file(GLOB_RECURSE sources_Cryptography Cryptography/*.cpp Cryptography/*.h)
 file(GLOB_RECURSE sources_Database Database/*.cpp Database/*.h)
@@ -45,10 +41,6 @@ set(sources_Debugging Debugging/Errors.cpp Debugging/Errors.h)
 # Build shared sourcelist
 #
 
-if (USE_COREPCH)
-  set(shared_STAT_PCH_HDR PrecompiledHeaders/sharedPCH.h)
-  set(shared_STAT_PCH_SRC PrecompiledHeaders/sharedPCH.cpp)
-endif()
 
 set(shared_STAT_SRCS
   ${shared_STAT_SRCS}
@@ -96,7 +88,7 @@ add_library(shared STATIC
 )
 
 target_link_libraries(shared
-  ${ACE_LIBRARY} g3dlib gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} 
+  ${ACE_LIBRARY} g3dlib gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} 
 )
 install(TARGETS shared DESTINATION lib)
 ELSE ( NOT STATIC_LINK )
@@ -104,7 +96,8 @@ add_library(shared STATIC ${shared_STAT_SRCS})
 
 ENDIF ( NOT STATIC_LINK )
 
-# Generate precompiled header
+
 if (USE_COREPCH)
-  add_cxx_pch(shared ${shared_STAT_PCH_HDR} ${shared_STAT_PCH_SRC})
-endif ()
+	cotire(shared)
+endif()
+

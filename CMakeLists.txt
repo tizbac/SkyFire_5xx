@@ -36,7 +36,7 @@ endif()
 
 include(CheckCXXSourceRuns)
 include(CheckIncludeFiles)
-
+include(cotire)
 # set default buildoptions and print them
 include(cmake/options.cmake)
 

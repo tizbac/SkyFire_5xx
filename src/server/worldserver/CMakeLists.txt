@@ -24,11 +24,6 @@ source_group(TCSoap FILES ${sources_TCSoap})
 source_group(WorldThread FILES ${sources_WorldThread})
 source_group(localdir FILES ${sources_localdir})
 
-if (USE_COREPCH)
-  set(worldserver_PCH_HDR PrecompiledHeaders/worldPCH.h)
-  set(worldserver_PCH_SRC PrecompiledHeaders/worldPCH.cpp)
-endif()
-
 set(worldserver_SRCS
   ${worldserver_SRCS}
   ${sources_CommandLine}
@@ -177,7 +172,7 @@ IF ( NOT STATIC_LINK )
 target_link_libraries(worldserver
   game
   pfboostsystem
-  
+
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}
@@ -199,10 +194,7 @@ target_link_libraries(worldserver
   scripts #TODO: Linkare solo se abilitati gli script
   collision
   g3dlib
-  recastnavigation
-  detour
   gsoap
-  Detour
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}
@@ -239,5 +231,5 @@ endif()
 
 # Generate precompiled header
 if( USE_COREPCH )
-  add_cxx_pch(worldserver ${worldserver_PCH_HDR} ${worldserver_PCH_SRC})
+  cotire(worldserver)
 endif()

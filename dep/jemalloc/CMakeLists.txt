@@ -58,8 +58,11 @@ include_directories(
 
 add_definitions(-D_GNU_SOURCE -D_REENTRANT)
 if ( NOT STATIC_LINK )
-add_library(jemalloc SHARED ${sources})
+add_library(jemalloc SHARED ${jemalloc_STAT_SRC})
+IF ( NOT MINGW )
+target_link_libraries(jemalloc pthread)
+ENDIF ( NOT MINGW )
 install(TARGETS jemalloc DESTINATION lib)
 else ( NOT STATIC_LINK )
-add_library(jemalloc STATIC ${sources})
+add_library(jemalloc STATIC ${jemalloc_STAT_SRC})
 endif ( NOT STATIC_LINK)

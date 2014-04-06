@@ -21,6 +21,7 @@
 #include "baradin_hold.h"
 #include "InstanceScript.h"
 #include "ScriptMgr.h"
+#include "CreatureAI.h"
 
 DoorData const doorData[] =
 {

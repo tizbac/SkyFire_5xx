@@ -25,7 +25,13 @@
 #include "Creature.h"
 #include "ObjectMgr.h"
 
+#include "Common.h"
+#include "Creature.h"
+#include "MapInstanced.h"
+#include "ObjectMgr.h"
 #define BHScriptName "instance_baradin_hold"
+
+class CreatureAI;
 
 uint32 const EncounterCount = 3;
 

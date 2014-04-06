@@ -24,11 +24,6 @@ source_group(Realms FILES ${sources_Realms})
 source_group(Server FILES ${sources_Server})
 source_group(localdir FILES ${sources_Localdir})
 
-if (USE_COREPCH)
-  set(authserver_PCH_HDR PrecompiledHeaders/authPCH.h)
-  set(authserver_PCH_SRC PrecompiledHeaders/authPCH.cpp)
-endif()
-
 set(authserver_SRCS
   ${authserver_SRCS}
   ${sources_Authentication}
@@ -115,5 +110,5 @@ endif()
 
 # Generate precompiled header
 if (USE_COREPCH)
-  add_cxx_pch(authserver ${authserver_PCH_HDR} ${authserver_PCH_SRC})
+  cotire(authserver)
 endif()

@@ -11,10 +11,6 @@
 
 # Enable precompiled headers when using the GCC compiler.
 
-if (USE_SCRIPTPCH)
-  set(scripts_STAT_PCH_HDR PrecompiledHeaders/ScriptPCH.h)
-  set(scripts_STAT_PCH_SRC PrecompiledHeaders/ScriptPCH.cpp)
-endif ()
 
 file(GLOB_RECURSE sources_PrecompiledHeaders PrecompiledHeaders/*.cpp PrecompiledHeaders/*.h)
 file(GLOB_RECURSE sources_EasternKingdoms EasternKingdoms/*.cpp EasternKingdoms/*.h)
@@ -58,6 +54,7 @@ set(scripts_STAT_SRCS
   ../game/AI/ScriptedAI/ScriptedEscortAI.cpp
   ../game/AI/ScriptedAI/ScriptedCreature.cpp
   ../game/AI/ScriptedAI/ScriptedFollowerAI.cpp
+  PrecompiledHeaders/ScriptPCH.cpp
 )
 
 if(SCRIPTS)
@@ -190,5 +187,5 @@ add_dependencies(scripts revision.h)
 
 # Generate precompiled header
 if (USE_SCRIPTPCH)
-  add_cxx_pch(scripts ${scripts_STAT_PCH_HDR} ${scripts_STAT_PCH_SRC})
+  cotire(scripts)
 endif()
