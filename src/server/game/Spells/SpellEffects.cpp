@@ -2120,7 +2120,15 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
 
     // determine how many units should be summoned
     uint32 numSummons;
-
+    //Fix totem e guardian dentro le colonne
+    Position pos = *destTarget;
+    bool reachable = m_caster->GetMap()->NavMeshLOS(m_caster->GetPositionX(),m_caster->GetPositionY(),m_caster->GetPositionZ(),pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ());
+    if ( !reachable )
+    {
+        //sLog->outString("Correzione posizione summon");
+        pos.Relocate(m_caster->GetMap()->navmeshLOS_coll_point[0],m_caster->GetMap()->navmeshLOS_coll_point[1],m_caster->GetMap()->navmeshLOS_coll_point[2]);
+        (*destTarget).Relocate(m_caster->GetMap()->navmeshLOS_coll_point[0],m_caster->GetMap()->navmeshLOS_coll_point[1],m_caster->GetMap()->navmeshLOS_coll_point[2]);
+    }
     // some spells need to summon many units, for those spells number of summons is stored in effect value
     // however so far noone found a generic check to find all of those (there's no related data in summonproperties.dbc
     // and in spell attributes, possibly we need to add a table for those)
