@@ -77,10 +77,10 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
         return;
 
     float x, y, z;
-    bool update_anyway = false;
+    //bool update_anyway = false;
    /* if ( Player * pltarg = i_target->ToPlayer() )
         update_anyway = pltarg->m_pred->HasMovementJustStarted();*/
-    if ( i_offset && i_target->IsWithinDistInMap ( &owner,2*i_offset ) ) {
+    /*if ( i_offset && i_target->IsWithinDistInMap ( &owner,2*i_offset ) ) {
         if ( pfexisting && !GetPathFindingState()->arrived && !update_anyway)
             return;
 
@@ -96,7 +96,24 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
             return;
         // to at i_offset distance from target and i_angle from target facing
         i_target->GetClosePoint ( x, y, z, owner.GetObjectSize(), i_offset, i_angle );
+    }*/
+    if (!i_offset)
+    {
+        if (i_target->IsWithinMeleeRange(&owner) && pfexisting)
+            return;
+
+        // to nearest random contact position
+        i_target->GetRandomContactPoint(&owner, x, y, z, 0, MELEE_RANGE - 0.5f);
     }
+    else
+    {
+        if (i_target->IsWithinDistInMap(&owner, i_offset + 1.0f) && pfexisting)
+            return;
+        // to at i_offset distance from target and i_angle from target facing
+        i_target->GetClosePoint(x, y, z, owner.GetObjectSize(), i_offset, i_angle);
+    }
+    
+    
 
     /*
         We MUST not check the distance difference and avoid setting the new location for smaller distances.
@@ -128,13 +145,13 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     {
         SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,x,y,z,owner.GetSpeed(MOVE_RUN) ) );
     }
-    if ( owner.IsControlledByPlayer() )
+    if ( owner.IsControlledByPlayer() && owner.HasUnitState(UNIT_STATE_FOLLOW))
     {
-        GetPathFindingState()->petownerposition = TrinityVector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() );
-
+        GetPathFindingState()->UpdatePetOwnerPosition(i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ());
     }else{
-        GetPathFindingState()->petownerposition = TrinityVector3 (G3D::nan(),G3D::nan(),G3D::nan());
+        GetPathFindingState()->UpdatePetOwnerPosition(G3D::nan(),G3D::nan(),G3D::nan());
     }
+    
     //printf("New destination %f %f %f\n",x,y,z);
     G3D::Vector3 latency_offset(0,0,0);
     /*if ( Player * pltarg = i_target->ToPlayer() )
@@ -252,7 +269,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
         float allowed_dist = 0.3f;
         float dist = ( lastdestination - G3D::Vector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() ) ).squaredLength();
-        sLog->outDebug(LOG_FILTER_MAPS,"PF: allowed_dist=%f dist=%f\n",allowed_dist*allowed_dist,dist);
+        //sLog->outDebug(LOG_FILTER_MAPS,"<%s->%s> PF: allowed_dist=%f dist=%f",owner.GetName(),i_target->GetName(),allowed_dist*allowed_dist,dist);
         if ( dist >= allowed_dist * allowed_dist )
         {
             _setTargetLocation ( owner );
@@ -276,7 +293,10 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
             _setTargetLocation ( owner );
         }
     }
-
+    
+    if ( pathfinding_started && owner.HasUnitState(UNIT_STATE_CHASE ) )
+        GetPathFindingState()->UpdateChaseTargetPosition(i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),i_target->GetMeleeReach());
+    
     if ( GetPathFindingState() ) {
         //sLog->outString("%p: paused=%s , rooted=%s",this,GetPathFindingState()->pause ? "true" : "false",owner.HasUnitState(UNIT_STAT_ROOT)? "true" : "false" );
         if ( owner.HasUnitState ( UNIT_STATE_ROOT |  UNIT_STATE_STUNNED | UNIT_STATE_DIED | UNIT_STATE_DISTRACTED | UNIT_STATE_CASTING | UNIT_STATE_CONFUSED ) ) {
@@ -319,7 +339,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
             }
 
         }
-        return false;
+        return true;
     }
     /**
      * Per i pet nel caso ci sia la necessita di splittare il percorso, di sicuro è troppo lungo il percorso , quindi andrà teleportato doopo un certo tempo
@@ -344,7 +364,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
     
     if ( owner.ToCreature() && ( owner.ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
     {
-        float player_speed = i_target->GetSpeed(MOVE_RUN);
+        float player_speed = owner.GetOwner()->GetSpeed(MOVE_RUN);
         calc_speed = owner.m_speed_rate[MOVE_RUN]*player_speed*1.15;
         
     }

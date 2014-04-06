@@ -170,7 +170,7 @@ namespace Movement
 
     void MoveSplineInit::MoveTo(const Vector3& dest, bool generatePath, bool forceDestination)
     {
-        if (generatePath)
+        /*if (generatePath)
         {
             PathGenerator path(unit);
             bool result = path.CalculatePath(dest.x, dest.y, dest.z, forceDestination);
@@ -179,7 +179,7 @@ namespace Movement
                 MovebyPath(path.GetPath());
                 return;
             }
-        }
+        }*/
 
         args.path_Idx_offset = 0;
         args.path.resize(2);

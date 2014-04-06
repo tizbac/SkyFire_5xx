@@ -25,5 +25,5 @@ if(WIN32)
 endif()
 
 add_library(Detour STATIC ${Detour_STAT_SRCS})
-
+set_target_properties( Detour PROPERTIES COMPILE_FLAGS "-fPIC" )
 target_link_libraries(Detour ${ZLIB_LIBRARIES})

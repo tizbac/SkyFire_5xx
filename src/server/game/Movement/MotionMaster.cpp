@@ -443,24 +443,11 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id,
     {
         TC_LOG_DEBUG("misc", "Creature (Entry: %u GUID: %u) charge point (X: %f Y: %f Z: %f)",
             _owner->GetEntry(), _owner->GetGUIDLow(), x, y, z);
-        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) && !_owner->GetUnitMovementFlags() & (MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY ) )
             Mutate ( new PointMovementGeneratorPathFind<Creature> ( id, x, y, z, speed ), MOTION_SLOT_CONTROLLED );
         else
             Mutate(new PointMovementGenerator<Creature>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
     }
-}
-
-void MotionMaster::MoveCharge(PathGenerator const& path)
-{
-    G3D::Vector3 dest = path.GetActualEndPosition();
-
-    MoveCharge(dest.x, dest.y, dest.z, SPEED_CHARGE, EVENT_CHARGE_PREPATH);
-
-    // Charge movement is not started when using EVENT_CHARGE_PREPATH
-    Movement::MoveSplineInit init(_owner);
-    init.MovebyPath(path.GetPath());
-    init.SetVelocity(SPEED_CHARGE);
-    init.Launch();
 }
 
 void MotionMaster::MoveSeekAssistance(float x, float y, float z)

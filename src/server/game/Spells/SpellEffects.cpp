@@ -36,6 +36,7 @@
 #include "Group.h"
 #include "UpdateData.h"
 #include "MapManager.h"
+#include <Pathfinding.h>
 #include "ObjectAccessor.h"
 #include "SharedDefines.h"
 #include "Pet.h"
@@ -62,7 +63,6 @@
 #include "GameObjectAI.h"
 #include "AccountMgr.h"
 #include "InstanceScript.h"
-#include "PathGenerator.h"
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "ReputationMgr.h"
@@ -2122,12 +2122,13 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
     uint32 numSummons;
     //Fix totem e guardian dentro le colonne
     Position pos = *destTarget;
-    bool reachable = m_caster->GetMap()->NavMeshLOS(m_caster->GetPositionX(),m_caster->GetPositionY(),m_caster->GetPositionZ(),pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ());
+    TrinityVector3 collpoint;
+    bool reachable = m_caster->GetMap()->NavMeshLOS(m_caster->GetPositionX(),m_caster->GetPositionY(),m_caster->GetPositionZ(),pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ(),&collpoint);
     if ( !reachable )
     {
         //sLog->outString("Correzione posizione summon");
-        pos.Relocate(m_caster->GetMap()->navmeshLOS_coll_point[0],m_caster->GetMap()->navmeshLOS_coll_point[1],m_caster->GetMap()->navmeshLOS_coll_point[2]);
-        (*destTarget).Relocate(m_caster->GetMap()->navmeshLOS_coll_point[0],m_caster->GetMap()->navmeshLOS_coll_point[1],m_caster->GetMap()->navmeshLOS_coll_point[2]);
+        pos.Relocate(collpoint.x,collpoint.y,collpoint.z);
+        (*destTarget).Relocate(collpoint.x,collpoint.y,collpoint.z);
     }
     // some spells need to summon many units, for those spells number of summons is stored in effect value
     // however so far noone found a generic check to find all of those (there's no related data in summonproperties.dbc
@@ -4609,14 +4610,9 @@ void Spell::EffectCharge(SpellEffIndex /*effIndex*/)
     
         if ( !sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ) )
         {
-            // Spell is not using explicit target - no generated path
-            if (m_preGeneratedPath.GetPathType() == PATHFIND_BLANK)
-            {
-                unitTarget->GetFirstCollisionPosition(pos, unitTarget->GetObjectSize(), unitTarget->GetRelativeAngle(m_caster));
-                m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
-            }
-            else
-                m_caster->GetMotionMaster()->MoveCharge(m_preGeneratedPath);
+	    unitTarget->GetFirstCollisionPosition(pos, unitTarget->GetObjectSize(), unitTarget->GetRelativeAngle(m_caster));
+	    m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+
 
         }
         else

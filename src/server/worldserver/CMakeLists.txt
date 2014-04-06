@@ -173,7 +173,7 @@ IF ( NOT STATIC_LINK )
 target_link_libraries(worldserver
   game
   pfboostsystem
-
+  
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}
@@ -196,6 +196,7 @@ target_link_libraries(worldserver
   collision
   g3dlib
   gsoap
+  Detour
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}

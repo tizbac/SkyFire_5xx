@@ -41,7 +41,7 @@ void TargetedMovementGeneratorMedium<T, D>::_setTargetLocation(T* owner, bool up
 
     float x, y, z;
 
-    if (updateDestination || !i_path)
+    if (updateDestination )
     {
         if (!i_offset)
         {
@@ -77,43 +77,16 @@ void TargetedMovementGeneratorMedium<T, D>::_setTargetLocation(T* owner, bool up
             i_target->GetClosePoint(x, y, z, size, i_offset, i_angle);
         }
     }
-    else
-    {
-        // the destination has not changed, we just need to refresh the path (usually speed change)
-        G3D::Vector3 end = i_path->GetEndPosition();
-        x = end.x;
-        y = end.y;
-        z = end.z;
-    }
 
-    if (!i_path)
-        i_path = new PathGenerator(owner);
 
-    // allow pets to use shortcut if no path found when following their master
-    bool forceDest = (owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsPet()
-        && owner->HasUnitState(UNIT_STATE_FOLLOW));
-
-    bool result = i_path->CalculatePath(x, y, z, forceDest);
-    if (!result || (i_path->GetPathType() & PATHFIND_NOPATH))
-    {
-        // Cant reach target
-        i_recalculateTravel = true;
-        return;
-    }
 
     D::_addUnitStateMove(owner);
     i_targetReached = false;
     i_recalculateTravel = false;
-    owner->AddUnitState(UNIT_STATE_CHASE);
 
     Movement::MoveSplineInit init(owner);
-    init.MovebyPath(i_path->GetPath());
+    init.MoveTo(x,y,z);
     init.SetWalk(((D*)this)->EnableWalking());
-    // Using the same condition for facing target as the one that is used for SetInFront on movement end
-    // - applies to ChaseMovementGenerator mostly
-    if (i_angle == 0.f)
-        init.SetFacing(i_target.getTarget());
-
     init.Launch();
 }
 

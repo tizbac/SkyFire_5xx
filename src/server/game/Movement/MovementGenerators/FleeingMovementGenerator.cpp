@@ -21,7 +21,7 @@
 #include "CreatureAI.h"
 #include "MapManager.h"
 #include "FleeingMovementGenerator.h"
-#include "PathGenerator.h"
+#include "Pathfinding.h"
 #include "ObjectAccessor.h"
 #include "MoveSplineInit.h"
 #include "MoveSpline.h"
@@ -43,18 +43,23 @@ void FleeingMovementGenerator<T>::_setTargetLocation(T* owner)
 
     float x, y, z;
     _getPoint(owner, x, y, z);
-
-    PathGenerator path(owner);
-    path.SetPathLengthLimit(30.0f);
-    bool result = path.CalculatePath(x, y, z);
-    if (!result || (path.GetPathType() & PATHFIND_NOPATH))
+    
+    
+    Map * m = owner->GetMap();
+    if ( m )
     {
-        i_nextCheckTime.Reset(100);
-        return;
+      TrinityVector3 v;
+      bool los = m->NavMeshLOS(owner->GetPositionX(),owner->GetPositionY(),owner->GetPositionZ(),x,y,z,&v);
+      if (!los )
+      {
+	  i_nextCheckTime.Reset(100);
+	  return;
+      }
+
     }
 
     Movement::MoveSplineInit init(owner);
-    init.MovebyPath(path.GetPath());
+    init.MoveTo(x,y,z,false);
     init.SetWalk(false);
     int32 traveltime = init.Launch();
     i_nextCheckTime.Reset(traveltime + urand(800, 1500));

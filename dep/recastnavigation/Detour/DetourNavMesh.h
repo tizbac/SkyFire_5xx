@@ -18,41 +18,21 @@
 
 #ifndef DETOURNAVMESH_H
 #define DETOURNAVMESH_H
+#warning "è stato usato"
 
 #include "DetourAlloc.h"
 #include "DetourStatus.h"
 
-
-// Edited by TC
-#if defined(WIN32) && !defined(__MINGW32__)
-typedef unsigned __int64    uint64;
-#else
-#include <stdint.h>
-#ifndef uint64_t
-#ifdef __linux__
-#include <linux/types.h>
-#endif
-#endif
-typedef uint64_t            uint64;
-#endif 
-
 // Note: If you want to use 64-bit refs, change the types of both dtPolyRef & dtTileRef.
 // It is also recommended that you change dtHashRef() to a proper 64-bit hash.
 
-// Edited by TC
-// We cannot have over 31 bits for either tile nor poly
-// without changing polyCount to use 64bits too.
-static const int STATIC_SALT_BITS = 12;
-static const int STATIC_TILE_BITS = 21;
-static const int STATIC_POLY_BITS = 31; 
-
 /// A handle to a polygon within a navigation mesh tile.
 /// @ingroup detour
-typedef uint64 dtPolyRef; // Edited by TC
+typedef unsigned long long int dtPolyRef;
 
 /// A handle to a tile within a navigation mesh.
 /// @ingroup detour
-typedef uint64 dtTileRef; // Edited by TC
+typedef unsigned long long int dtTileRef;
 
 /// The maximum number of vertices per navigation polygon.
 /// @ingroup detour
@@ -106,13 +86,6 @@ enum dtStraightPathFlags
 	DT_STRAIGHTPATH_START = 0x01,				///< The vertex is the start position in the path.
 	DT_STRAIGHTPATH_END = 0x02,					///< The vertex is the end position in the path.
 	DT_STRAIGHTPATH_OFFMESH_CONNECTION = 0x04,	///< The vertex is the start of an off-mesh connection.
-};
-
-/// Options for dtNavMeshQuery::findStraightPath.
-enum dtStraightPathOptions
-{
-	DT_STRAIGHTPATH_AREA_CROSSINGS = 0x01,	///< Add a vertex at every polygon edge crossing where area changes.
-	DT_STRAIGHTPATH_ALL_CROSSINGS = 0x02,	///< Add a vertex at every polygon edge crossing.
 };
 
 /// Flags representing the type of a navigation mesh polygon.
@@ -563,7 +536,7 @@ private:
 	/// Builds internal polygons links for a tile.
 	void connectIntLinks(dtMeshTile* tile);
 	/// Builds internal polygons links for a tile.
-	void baseOffMeshLinks(dtMeshTile* tile);
+	void connectIntOffMeshLinks(dtMeshTile* tile);
 
 	/// Builds external polygon links for a tile.
 	void connectExtLinks(dtMeshTile* tile, dtMeshTile* target, int side);

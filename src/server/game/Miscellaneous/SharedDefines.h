@@ -20,7 +20,6 @@
 #ifndef TRINITY_SHAREDDEFINES_H
 #define TRINITY_SHAREDDEFINES_H
 
-#include "DetourNavMesh.h"
 #include "Define.h"
 #include <cassert>
 
@@ -4180,7 +4179,7 @@ enum PartyResult
     ERR_PARTY_LFG_BOOT_LOOT_ROLLS       = 29,
     ERR_PARTY_LFG_TELEPORT_IN_COMBAT    = 30
 };
-
+/*
 const uint32 MMAP_MAGIC = 0x4d4d4150; // 'MMAP'
 #define MMAP_VERSION 4
 
@@ -4218,6 +4217,6 @@ enum DiminishingLevels
     DIMINISHING_LEVEL_IMMUNE        = 3,
     DIMINISHING_LEVEL_4             = 3,
     DIMINISHING_LEVEL_TAUNT_IMMUNE  = 4
-};
+};*/
 
 #endif

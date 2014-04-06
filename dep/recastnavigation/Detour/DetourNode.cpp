@@ -24,14 +24,13 @@
 
 inline unsigned int dtHashRef(dtPolyRef a)
 {
-    // Edited by TC
-    a = (~a) + (a << 18);
-    a = a ^ (a >> 31);
-    a = a * 21;
-    a = a ^ (a >> 11);
-    a = a + (a << 6);
-    a = a ^ (a >> 22);
-    return (unsigned int)a;
+	a = (~a) + (a << 18);
+        a = a ^ (a >> 31);
+        a = a * 21;
+        a = a ^ (a >> 11);
+        a = a + (a << 6);
+        a = a ^ (a >> 22);
+	return (unsigned int)a;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

@@ -96,7 +96,10 @@ class TrinityVector3{
       return x*b.x+y*b.y+z*b.z;
 
   }
-
+  bool operator!=(TrinityVector3 b)
+  {
+      return x != b.x || y != b.y || z != b.z;
+  }
   TrinityVector3 operator=(TrinityVector3 b)
   {
     x = b.x;
@@ -160,6 +163,7 @@ class PathFindingState
     float lasty;
     float lastz;
     TrinityVector3 petownerposition;
+    TrinityVector3 chasetargetposition;
     bool arrived;
     bool pause;
     PathViewer * debug;
@@ -170,7 +174,9 @@ class PathFindingState
     void Calculate(Map * m,Unit * u);
     void Pause();
     void UnPause();
-    void UpdateDestination(float destx,float desty,float destz,uint32 movementflags);
+    void UpdateDestination(float destx, float desty, float destz, uint32 movementflags, bool fromWorldThread = true);
+    void UpdatePetOwnerPosition(float x,float y,float z);
+    void UpdateChaseTargetPosition(float x,float y,float z,float mr);
     bool HasArrived();
     bool willdelete;
     PathFindingMgr * pmgr;
@@ -180,6 +186,7 @@ class PathFindingState
     
     
     bool isCharge;
+    float targetmeleerange;
 
 };
 typedef std::list<uint64> t_mobwplist;

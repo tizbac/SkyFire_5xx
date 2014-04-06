@@ -408,7 +408,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
                 path2sendtime = totaltime;
                 return;
         }
-        sLog->outDebug(LOG_FILTER_MAPS, "Send monstermove Waypoints: %d, totaltime=%u",path.size()/3,totaltime);
+        sLog->outDebug(LOG_FILTER_MAPS, "<%s> Send monstermove Waypoints: %d, totaltime=%u",GetName(),path.size()/3,totaltime);
         std::vector<G3D::Vector3> points;
         for ( int i = 0; i < path.size()/3; i++ )
         {
@@ -418,7 +418,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
         WorldPacket data(SMSG_MONSTER_MOVE, 1+12+4+1+4+4+4+4*path.size()+GetPackGUID().size());
         data.append(GetPackGUID());
         data << uint8(0);                                       // new in 3.1
-        sLog->outDebug(LOG_FILTER_MAPS,"WPMM: %f %f %f",path[0],path[1], path[2]);
+        sLog->outDebug(LOG_FILTER_MAPS,"<%s> WPMM: %f %f %f",GetName(),path[0],path[1], path[2]);
         data << path[0] << path[1] << path[2];//GetPositionX() << GetPositionY() << GetPositionZ();
         data << id;
         data << uint8(0);

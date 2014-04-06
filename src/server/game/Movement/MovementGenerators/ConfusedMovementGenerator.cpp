@@ -20,12 +20,12 @@
 #include "Creature.h"
 #include "MapManager.h"
 #include "ConfusedMovementGenerator.h"
-#include "PathGenerator.h"
 #include "VMapFactory.h"
 #include "MoveSplineInit.h"
 #include "MoveSpline.h"
 #include "Player.h"
-
+#include "Map.h"
+#include "Pathfinding.h"
 #ifdef MAP_BASED_RAND_GEN
 #define rand_norm() unit.rand_norm()
 #define urand(a, b) unit.urand(a, b)
@@ -86,17 +86,21 @@ bool ConfusedMovementGenerator<T>::DoUpdate(T* unit, uint32 diff)
             pos.Relocate(i_x, i_y, i_z);
             unit->MovePositionToFirstCollision(pos, dest, 0.0f);
 
-            PathGenerator path(unit);
-            path.SetPathLengthLimit(30.0f);
-            bool result = path.CalculatePath(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
-            if (!result || (path.GetPathType() & PATHFIND_NOPATH))
-            {
-                i_nextMoveTime.Reset(100);
-                return true;
-            }
+            Map * m = unit->GetMap();
+	    if ( m )
+	    {
+	      TrinityVector3 v;
+	      bool los = m->NavMeshLOS(i_x,i_y,i_z,pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ(),&v);
+	      if (!los )
+	      {
+		  i_nextMoveTime.Reset(100);
+		  return true;
+	      }
 
+	    }
+            
             Movement::MoveSplineInit init(unit);
-            init.MovebyPath(path.GetPath());
+            init.MoveTo(pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ(),false);
             init.SetWalk(true);
             init.Launch();
         }
