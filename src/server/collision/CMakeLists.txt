@@ -74,21 +74,21 @@ include_directories(
 )
 
 if ( NOT STATIC_LINK )
-add_library(collision SHARED ${collision_STAT_SRCS})
-target_link_libraries(collision pfboostsystem shared gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
-install(TARGETS collision DESTINATION lib)
+add_library(skyfirecollision SHARED ${collision_STAT_SRCS})
+target_link_libraries(skyfirecollision pfboostsystem skyfireshared gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
+install(TARGETS skyfirecollision DESTINATION lib)
 ELSE ( NOT STATIC_LINK )
-add_library(collision STATIC
+add_library(skyfirecollision STATIC
   ${collision_STAT_SRCS}
   ${collision_STAT_PCH_SRC}
 )
 
-target_link_libraries(collision
-  shared
+target_link_libraries(skyfirecollision
+  skyfireshared
 )
 endif ( NOT STATIC_LINK )
 
 # Generate precompiled header
 if (USE_COREPCH)
-  cotire(collision)
+  cotire(skyfirecollision)
 endif ()

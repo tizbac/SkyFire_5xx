@@ -40,7 +40,7 @@ class TargetedMovementGeneratorMediumPathFind
         ~TargetedMovementGeneratorMediumPathFind();
 
     public:
-        bool Update(T &, const uint32 &);
+        bool DoUpdate(T &, const uint32 &);
         Unit* GetTarget() const { return i_target.getTarget(); }
 
         void unitSpeedChanged() { i_recalculateTravel=true; }

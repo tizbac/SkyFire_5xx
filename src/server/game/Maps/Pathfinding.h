@@ -4,7 +4,7 @@
 #include <Unit.h>
 #include <Map.h>
 #include <World.h>
-#include "pathfinding/Detour/DetourNavMesh.h"
+#include "DetourNavMesh.h"
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
@@ -154,6 +154,7 @@ class PathFindingState
     uint32 id;
     uint64 guid;
     std::vector<uint32> waypointtime;
+    std::vector<float> path2send;
     boost::asio::io_service arrivedcallback;
     Map * map;
     void * destholdptr;
@@ -185,10 +186,13 @@ class PathFindingState
     boost::mutex statelock;
     ~PathFindingState();
     
+    bool isflying;
+    uint32 lastCheck;
     
     bool isCharge;
     float targetmeleerange;
 
+    uint64 facingTarget;
 };
 typedef std::list<uint64> t_mobwplist;
 class PathViewer
@@ -216,7 +220,7 @@ class PathFindingMgr
     uint32 currdiff;
     uint32 pathfindingcount;
     PathFindingState* AddPathfind(Unit * u,float destx, float desty, float destz,float speed,bool isCharge = false);
-    void SendMonsterMoveGUID(uint64 guid,std::vector<float> path,uint32 time,uint32 timestamp);
+    void SendMonsterMoveGUID(uint64 guid,std::vector<float> path,uint32 time,uint32 timestamp, uint64 facingTarget);
     void PlayerRelocateGUID(uint64 guid,float x , float y,float z);
     void CreatureRelocateGUID(uint64 guid,float x , float y,float z);
     

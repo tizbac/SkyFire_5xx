@@ -79,7 +79,7 @@ if( NOT WIN32 )
 endif()
 
 target_link_libraries(authserver
-  shared
+  skyfireshared
   ${MYSQL_LIBRARY}
   ${OPENSSL_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}

@@ -63,7 +63,7 @@ template<class T, typename D>
 void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner )
 {
     bool pfexisting = false;
-    if ( owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
+    if ( owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
         pfexisting = true;
         //Inizializza pathfinding
         //printf("Init pathfind\n");
@@ -73,7 +73,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     if ( !i_target.isValid() || !i_target->IsInWorld() )
         return;
 
-    if ( owner.HasUnitState ( UNIT_STATE_NOT_MOVE ) )
+    if ( owner->HasUnitState ( UNIT_STATE_NOT_MOVE ) )
         return;
 
     float x, y, z;
@@ -84,7 +84,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
         if ( pfexisting && !GetPathFindingState()->arrived && !update_anyway)
             return;
 
-        owner.GetPosition ( x, y, z );
+        owner->GetPosition ( x, y, z );
     } else if ( !i_offset ) {
         if ( i_target->IsWithinMeleeRange ( &owner ) && !update_anyway)
             return;
@@ -95,7 +95,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
         if ( i_target->IsWithinDistInMap ( &owner, i_offset + 1.0f ) && !update_anyway )
             return;
         // to at i_offset distance from target and i_angle from target facing
-        i_target->GetClosePoint ( x, y, z, owner.GetObjectSize(), i_offset, i_angle );
+        i_target->GetClosePoint ( x, y, z, owner->GetObjectSize(), i_offset, i_angle );
     }*/
     if (!i_offset)
     {
@@ -110,7 +110,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
         if (i_target->IsWithinDistInMap(&owner, i_offset + 1.0f) && pfexisting)
             return;
         // to at i_offset distance from target and i_angle from target facing
-        i_target->GetClosePoint(x, y, z, owner.GetObjectSize(), i_offset, i_angle);
+        i_target->GetClosePoint(x, y, z, owner->GetObjectSize(), i_offset, i_angle);
     }
     
     
@@ -127,7 +127,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
         ralf
 
         //We don't update Mob Movement, if the difference between New destination and last destination is < BothObjectSize
-        float  bothObjectSize = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + CONTACT_DISTANCE;
+        float  bothObjectSize = i_target->GetObjectBoundingRadius() + owner->GetObjectBoundingRadius() + CONTACT_DISTANCE;
         if( i_destinationHolder.HasDestination() && i_destinationHolder.GetDestinationDiff(x,y,z) < bothObjectSize )
             return;
     */
@@ -143,9 +143,9 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     init.Launch();*/
     if ( !pfexisting )
     {
-        SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,x,y,z,owner.GetSpeed(MOVE_RUN) ) );
+        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,x,y,z,owner->GetSpeed(MOVE_RUN) ) );
     }
-    if ( owner.IsControlledByPlayer() && owner.HasUnitState(UNIT_STATE_FOLLOW))
+    if ( owner->IsControlledByPlayer() && owner->HasUnitState(UNIT_STATE_FOLLOW))
     {
         GetPathFindingState()->UpdatePetOwnerPosition(i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ());
     }else{
@@ -214,19 +214,19 @@ namespace Movement
 }
 
 template<class T, typename D>
-bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint32 & time_diff )
+bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const uint32 & time_diff )
 {
-    boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
+    boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
     if ( !i_target.isValid() || !i_target->IsInWorld() )
         return false;
     bool pathfinding_started = true;
-    if ( !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
+    if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
         pathfinding_started = false;
     }
-    if ( !owner.isAlive() )
+    if ( !owner->isAlive() )
         return true;
 
-    if ( owner.HasUnitState ( UNIT_STATE_NOT_MOVE ) ) {
+    if ( owner->HasUnitState ( UNIT_STATE_NOT_MOVE ) ) {
         D::_clearUnitStateMove ( owner );
         if ( pathfinding_started && !GetPathFindingState()->pause )
         {
@@ -236,10 +236,10 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
     }
 
     // prevent movement while casting spells with cast time or channel time
-    if ( owner.HasUnitState(UNIT_STATE_CASTING) || owner.HasUnitState(UNIT_STATE_ROOT) || owner.HasUnitState(UNIT_STATE_STUNNED) || owner.HasUnitState(UNIT_STATE_FLEEING)) {
-        if ( !owner.IsStopped() )
+    if ( owner->HasUnitState(UNIT_STATE_CASTING) || owner->HasUnitState(UNIT_STATE_ROOT) || owner->HasUnitState(UNIT_STATE_STUNNED) || owner->HasUnitState(UNIT_STATE_FLEEING)) {
+        if ( !owner->IsStopped() )
         {
-            owner.StopMoving();
+            owner->StopMoving();
         }
         if ( pathfinding_started && !GetPathFindingState()->pause )
         {
@@ -269,7 +269,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
         float allowed_dist = 0.3f;
         float dist = ( lastdestination - G3D::Vector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() ) ).squaredLength();
-        //sLog->outDebug(LOG_FILTER_MAPS,"<%s->%s> PF: allowed_dist=%f dist=%f",owner.GetName(),i_target->GetName(),allowed_dist*allowed_dist,dist);
+        //sLog->outDebug(LOG_FILTER_MAPS,"<%s->%s> PF: allowed_dist=%f dist=%f",owner->GetName(),i_target->GetName(),allowed_dist*allowed_dist,dist);
         if ( dist >= allowed_dist * allowed_dist )
         {
             _setTargetLocation ( owner );
@@ -279,8 +279,8 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
 
     if ( pathfinding_started && GetPathFindingState()->arrived ) { /* GetPathFindingState() è valido per forza dato che Update non è chiamato prima di initialize */
         static_cast<D*> ( this )->MovementInform ( owner );
-        if ( i_angle == 0.f && !owner.HasInArc ( 0.01f, i_target.getTarget() ) )
-            owner.SetInFront ( i_target.getTarget() );
+        if ( i_angle == 0.f && !owner->HasInArc ( 0.01f, i_target.getTarget() ) )
+            owner->SetInFront ( i_target.getTarget() );
 
         if ( !i_targetReached ) {
             i_targetReached = true;
@@ -294,12 +294,12 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
         }
     }
     
-    if ( pathfinding_started && owner.HasUnitState(UNIT_STATE_CHASE ) )
+    if ( pathfinding_started && owner->HasUnitState(UNIT_STATE_CHASE ) )
         GetPathFindingState()->UpdateChaseTargetPosition(i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),i_target->GetMeleeReach());
     
     if ( GetPathFindingState() ) {
-        //sLog->outString("%p: paused=%s , rooted=%s",this,GetPathFindingState()->pause ? "true" : "false",owner.HasUnitState(UNIT_STAT_ROOT)? "true" : "false" );
-        if ( owner.HasUnitState ( UNIT_STATE_ROOT |  UNIT_STATE_STUNNED | UNIT_STATE_DIED | UNIT_STATE_DISTRACTED | UNIT_STATE_CASTING | UNIT_STATE_CONFUSED ) ) {
+        //sLog->outString("%p: paused=%s , rooted=%s",this,GetPathFindingState()->pause ? "true" : "false",owner->HasUnitState(UNIT_STAT_ROOT)? "true" : "false" );
+        if ( owner->HasUnitState ( UNIT_STATE_ROOT |  UNIT_STATE_STUNNED | UNIT_STATE_DIED | UNIT_STATE_DISTRACTED | UNIT_STATE_CASTING | UNIT_STATE_CONFUSED ) ) {
 
             if ( ( !GetPathFindingState()->pause ) ) {
                 GetPathFindingState()->Pause();
@@ -345,14 +345,14 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
      * Per i pet nel caso ci sia la necessita di splittare il percorso, di sicuro è troppo lungo il percorso , quindi andrà teleportato doopo un certo tempo
      * 
      * */
-    if ( (GetPathFindingState() && GetPathFindingState()->status == PATHFINDINGSTATUS_DEST_UNREACHABLE) || (GetPathFindingState() && GetPathFindingState()->status == PATHFINDINGSTATUS_PARTIAL && owner.IsControlledByPlayer() ) )
+    if ( (GetPathFindingState() && GetPathFindingState()->status == PATHFINDINGSTATUS_DEST_UNREACHABLE) || (GetPathFindingState() && GetPathFindingState()->status == PATHFINDINGSTATUS_PARTIAL && owner->IsControlledByPlayer() ) )
         unreachabletimer += time_diff;
     else
         unreachabletimer = 0;
     // prevent movement while casting spells with cast time or channel time
 
-    if ( owner.HasUnitState ( UNIT_STATE_CASTING ) && GetPathFindingState() ) {
-        if ( !owner.IsStopped() ) {
+    if ( owner->HasUnitState ( UNIT_STATE_CASTING ) && GetPathFindingState() ) {
+        if ( !owner->IsStopped() ) {
 
             GetPathFindingState()->Pause();
 
@@ -360,20 +360,20 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
         return true;
     }
     float calc_speed;
-    calc_speed = owner.GetSpeed(Movement::SelectSpeedType(owner.GetUnitMovementFlags()));
+    calc_speed = owner->GetSpeed(Movement::SelectSpeedType(owner->GetUnitMovementFlags()));
     
-    if ( owner.ToCreature() && ( owner.ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
+    if ( owner->ToCreature() && ( owner->ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
     {
-        float player_speed = owner.GetOwner()->GetSpeed(MOVE_RUN);
-        calc_speed = owner.m_speed_rate[MOVE_RUN]*player_speed*1.15;
+        float player_speed = owner->GetOwner()->GetSpeed(MOVE_RUN);
+        calc_speed = owner->m_speed_rate[MOVE_RUN]*player_speed*1.15;
         
     }
     if ( GetPathFindingState() ) {
         if ( GetPathFindingState()->speed != calc_speed) {
-            if ( owner.GetSpeed ( MOVE_RUN ) > 0.0 )
+            if ( owner->GetSpeed ( MOVE_RUN ) > 0.0 )
                 GetPathFindingState()->speed = calc_speed;
             else
-                sLog->outError ( "TargetedMovementGenerator: Velocità non valida %f",owner.GetSpeed ( MOVE_RUN ) );
+                sLog->outError ( "TargetedMovementGenerator: Velocità non valida %f",owner->GetSpeed ( MOVE_RUN ) );
             GetPathFindingState()->mustrecalculate = true;
             //printf("Nuova velocità\n");
         }
@@ -387,49 +387,49 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
 template<class T>
 void ChaseMovementGeneratorPathFind<T>::_reachTarget ( T &owner )
 {
-    if ( owner.IsWithinMeleeRange ( this->i_target.getTarget() ) )
-        owner.Attack ( this->i_target.getTarget(),true );
+    if ( owner->IsWithinMeleeRange ( this->i_target.getTarget() ) )
+        owner->Attack ( this->i_target.getTarget(),true );
 }
 
 template<>
 void ChaseMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
 {
-    owner.AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
+    owner->AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
     {
-        /*boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
-        if ( !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
-            SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner.GetSpeed ( MOVE_RUN ) ) );*/
+        /*boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
+        if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
+            SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner->GetSpeed ( MOVE_RUN ) ) );*/
         _setTargetLocation ( owner );
     }
-    guid = owner.GetGUID();
+    guid = owner->GetGUID();
 
 }
 
 template<>
 void ChaseMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
 {
-    owner.SetWalk ( false );
-    owner.AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
+    owner->SetWalk ( false );
+    owner->AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
     {
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
-        /*if ( !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
+        /*if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
         {
            /* if ( !i_target.isValid() || !i_target->IsInWorld() )
               sLog->outError("ChaseMovementGeneratorPathFind<Creature>::Initialize : Invalid target!");
             else
-              SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner.GetSpeed ( MOVE_RUN ) ) );
+              SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner->GetSpeed ( MOVE_RUN ) ) );
         */
             _setTargetLocation ( owner );
         //}
         
     }
-    guid = owner.GetGUID();
+    guid = owner->GetGUID();
 }
 
 template<class T>
 void ChaseMovementGeneratorPathFind<T>::Finalize ( T &owner )
 {
-    owner.ClearUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
+    owner->ClearUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
 }
 
 template<class T>
@@ -509,46 +509,46 @@ template<>
 void FollowMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
 {
     /*{
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
-        if ( !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
-            SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,G3D::nan(),G3D::nan(),G3D::nan(),owner.GetSpeed ( MOVE_RUN ) ) );
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
+        if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
+            SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,G3D::nan(),G3D::nan(),G3D::nan(),owner->GetSpeed ( MOVE_RUN ) ) );
 
     }*/
-    owner.AddUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
+    owner->AddUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
 
     {
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
         _updateSpeed ( owner );
         _setTargetLocation ( owner );
     }
-    guid = owner.GetGUID();
+    guid = owner->GetGUID();
 }
 
 template<>
 void FollowMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
 {
     /*{
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
-        if ( !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
-            SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner.GetSpeed ( MOVE_RUN ) ) );
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
+        if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
+            SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ(),owner->GetSpeed ( MOVE_RUN ) ) );
 
     }*/
-    owner.AddUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
+    owner->AddUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
     {
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
         _updateSpeed ( owner );
         _setTargetLocation ( owner );
         
     }
-    guid = owner.GetGUID();
+    guid = owner->GetGUID();
 }
 
 template<class T>
 void FollowMovementGeneratorPathFind<T>::Finalize ( T &owner )
 {
-    owner.ClearUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
+    owner->ClearUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
     {
-        boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
+        boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
         _updateSpeed ( owner );
     }
 }

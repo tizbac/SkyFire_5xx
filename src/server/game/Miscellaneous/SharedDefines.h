@@ -4208,7 +4208,7 @@ enum NavTerrain
     NAV_UNUSED4 = 0x80
     // we only have 8 bits
 };
-
+*/
 enum DiminishingLevels
 {
     DIMINISHING_LEVEL_1             = 0,
@@ -4217,6 +4217,6 @@ enum DiminishingLevels
     DIMINISHING_LEVEL_IMMUNE        = 3,
     DIMINISHING_LEVEL_4             = 3,
     DIMINISHING_LEVEL_TAUNT_IMMUNE  = 4
-};*/
+};
 
 #endif

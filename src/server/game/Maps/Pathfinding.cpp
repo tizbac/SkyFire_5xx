@@ -47,7 +47,7 @@ void Map::LoadNavMesh(int gx, int gy)
             file = fopen(fileName, "rb");
             if (!file)
             {
-              sLog->outDebug(LOG_FILTER_MAPS, "Error: Could not open mmap file '%s'", fileName);
+              TC_LOG_DEBUG("maps", "Error: Could not open mmap file '%s'", fileName);
               return;
             }
         }
@@ -56,7 +56,7 @@ void Map::LoadNavMesh(int gx, int gy)
         bytesread = fread(&params, sizeof(dtNavMeshParams), 1, file);
         if ( bytesread < 1 )
         {
-            sLog->outError(LOG_FILTER_GENERAL, "%d:Short read while loading '%s' got %u bytes, expected %u",__LINE__,fileName,uint32(bytesread*sizeof(dtNavMeshParams)), uint32(sizeof(dtNavMeshParams)));
+            TC_LOG_ERROR("general", "%d:Short read while loading '%s' got %u bytes, expected %u",__LINE__,fileName,uint32(bytesread*sizeof(dtNavMeshParams)), uint32(sizeof(dtNavMeshParams)));
             fclose(file);
             return;
             
@@ -74,7 +74,7 @@ void Map::LoadNavMesh(int gx, int gy)
         {
             delete m_navMesh;
             m_navMesh = 0;
-            sLog->outError(LOG_FILTER_GENERAL, "Error: Failed to initialize mmap %03u from file %s", i_id, fileName);
+            TC_LOG_ERROR("general", "Error: Failed to initialize mmap %03u from file %s", i_id, fileName);
             return;
         }
     }
@@ -93,7 +93,7 @@ void Map::LoadNavMesh(int gx, int gy)
         file = fopen(fileName, "rb");
         if (!file)
         {
-          sLog->outDebug(LOG_FILTER_MAPS, "Error: Could not open mmtile file '%s'", fileName);
+          TC_LOG_DEBUG("maps", "Error: Could not open mmtile file '%s'", fileName);
           return;
         }
     }
@@ -106,7 +106,7 @@ void Map::LoadNavMesh(int gx, int gy)
     bytesread = fread(data, length, 1, file);
     if ( bytesread < 1 )
     {
-        sLog->outError(LOG_FILTER_GENERAL, "%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,int32(bytesread*length), length);
+        TC_LOG_ERROR("general", "%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,int32(bytesread*length), length);
         return;
     }
     fclose(file);
@@ -114,13 +114,13 @@ void Map::LoadNavMesh(int gx, int gy)
     dtMeshHeader* header = (dtMeshHeader*)data;
     if (header->magic != DT_NAVMESH_MAGIC)
     {
-        sLog->outError(LOG_FILTER_GENERAL, "Error: %03u%02i%02i.mmtile has an invalid header", i_id, gx, gy);
+        TC_LOG_ERROR("general", "Error: %03u%02i%02i.mmtile has an invalid header", i_id, gx, gy);
         dtFree(data);
         return;
     }
     if (header->version != DT_NAVMESH_VERSION)
     {
-        sLog->outError(LOG_FILTER_GENERAL, "Error: %03u%02i%02i.mmtile was built with Detour v%i, expected v%i",
+        TC_LOG_ERROR("general", "Error: %03u%02i%02i.mmtile was built with Detour v%i, expected v%i",
                               i_id, gx, gy,                 header->version, DT_NAVMESH_VERSION);
         dtFree(data);
         return;
@@ -128,7 +128,7 @@ void Map::LoadNavMesh(int gx, int gy)
 
     if(!m_navMesh->addTile(data, length, DT_TILE_FREE_DATA,0,NULL))
     {
-        sLog->outError(LOG_FILTER_GENERAL, "Error: could not load %03u%02i%02i.mmtile into navmesh (InstanceId: %d)", i_id, gx, gy,GetInstanceId());
+        TC_LOG_ERROR("general", "Error: could not load %03u%02i%02i.mmtile into navmesh (InstanceId: %d)", i_id, gx, gy,GetInstanceId());
         dtFree(data);
         return;
     }
@@ -137,7 +137,7 @@ void Map::LoadNavMesh(int gx, int gy)
 
     uint32 packedTilePos = packTileID(uint32(header->x), uint32(header->y));
     m_mmapTileMap.insert(std::pair<uint32, uint32>(packedGridPos, packedTilePos));
-    sLog->outDebug(LOG_FILTER_MAPS, "Loaded mmtile %03i[%02i,%02i] into %03i(%u)[%02i,%02i]", i_id, gx, gy, i_id, GetInstanceId(), header->x, header->y);
+    TC_LOG_DEBUG("maps", "Loaded mmtile %03i[%02i,%02i] into %03i(%u)[%02i,%02i]", i_id, gx, gy, i_id, GetInstanceId(), header->x, header->y);
 }
 bool Map::NavMeshLoaded(int gx, int gy)
 {
@@ -284,7 +284,7 @@ void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, 
     u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
     if (!u)
     {
-        sLog->outError(LOG_FILTER_GENERAL, "SendMonsterMoveGUID: GUID " UI64FMTD " non valida.",guid);
+        TC_LOG_ERROR("general", "SendMonsterMoveGUID: GUID " UI64FMTD " non valida.",guid);
 
         return;
     }
@@ -300,7 +300,7 @@ void PathFindingMgr::CreatureRelocateGUID(uint64 guid, float x, float y, float z
     c = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
     if (!c)
     {
-        sLog->outError(LOG_FILTER_GENERAL, "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
+        TC_LOG_ERROR("general", "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
         return;
     }
     c->UpdatePosition(x,y,z,c->GetOrientation());
@@ -332,7 +332,7 @@ void UnitStopMoving(uint64 guid)
         u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
         if (!u)
         {
-            sLog->outError(LOG_FILTER_GENERAL, "UnitStopMoving: GUID " UI64FMTD " non valida.",guid);
+            TC_LOG_ERROR("general", "UnitStopMoving: GUID " UI64FMTD " non valida.",guid);
         }
         u->StopMoving();
 
@@ -349,7 +349,7 @@ void UnitRelocateGUID(uint64 guid, float x, float y, float z)
         c = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
         if (!c)
         {
-            sLog->outError(LOG_FILTER_GENERAL, "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
+            TC_LOG_ERROR("general", "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
             return;
         }
         c->UpdatePosition(x,y,z,c->GetOrientation());
@@ -420,7 +420,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
 
 
-    //sLog->outDebug(LOG_FILTER_MAPS, "MovementThread: Update diff = %d, pathfinderscount=%d",timediff,pMgr->paths.size());
+    //TC_LOG_DEBUG("maps", "MovementThread: Update diff = %d, pathfinderscount=%d",timediff,pMgr->paths.size());
     pMgr->pathfindingcount = pMgr->paths.size();
     for ( std::list<PathFindingState*>::iterator it = pMgr->paths.begin(); it != pMgr->paths.end(); it++ )
     {
@@ -441,13 +441,13 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
         {
             boost::mutex::scoped_lock lock(pMgr->listsmutex);
             pMgr->removelist.push_back(pfstate);
-            sLog->outDebug(LOG_FILTER_MAPS, "La Unit è stata deletata prima di deletare il movementgenerator");
+            TC_LOG_DEBUG("maps", "La Unit è stata deletata prima di deletare il movementgenerator");
             sObjectAccessor->deletelock.unlock();
             continue;
         }
         if ( u->GetMap() != m)//non dovrebbe mai succedere in teoria
         {
-            sLog->outError(LOG_FILTER_GENERAL, "Unit '%s' guid " UI64FMTD " : Pathfindingthread: La mappa della Unit non corrisponde al thread , rimozione ",u->GetName().c_str(),u->GetGUID());
+            TC_LOG_ERROR("general", "Unit '%s' guid " UI64FMTD " : Pathfindingthread: La mappa della Unit non corrisponde al thread , rimozione ",u->GetName().c_str(),u->GetGUID());
             boost::mutex::scoped_lock lock(pMgr->listsmutex);
             pMgr->removelist.push_back(pfstate);
             sObjectAccessor->deletelock.unlock();
@@ -498,19 +498,19 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
         if ( (! pfstate->calculated) || ( pfstate->mustrecalculate ) )
         {
-            sLog->outDebug(LOG_FILTER_MAPS, "<%s>Percorso non calcolato oppure ricalcolazione necessaria, calcolo...",u->GetName().c_str());
+            TC_LOG_DEBUG("maps", "<%s>Percorso non calcolato oppure ricalcolazione necessaria, calcolo...",u->GetName().c_str());
             pfstate->Calculate(m,u);
             if ( pfstate->path.size() > 3 && !pfstate->pause && pfstate->status != PATHFINDINGSTATUS_DEST_UNREACHABLE )//Invia il percorso solo se valido
                 m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id, pfstate->facingTarget));
             else
-                sLog->outDebug(LOG_FILTER_MAPS, "<%s>Percorso calcolato non valido %u %d %u",u->GetName().c_str(),uint32(pfstate->path.size()),pfstate->pause,pfstate->status);
+                TC_LOG_DEBUG("maps", "<%s>Percorso calcolato non valido %u %d %u",u->GetName().c_str(),uint32(pfstate->path.size()),pfstate->pause,pfstate->status);
             pfstate->mustrecalculate = false;
         }
         if ( pfstate->pause || pfstate->arrived || pfstate->status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
         {
             /*if ( ! sqrt((pfstate->lastx-pfstate->destx)*(pfstate->lastx-pfstate->destx)+(pfstate->lasty-pfstate->desty)*(pfstate->lasty-pfstate->desty)+(pfstate->lastz-pfstate->destz)*(pfstate->lastz-pfstate->destz)) < 0.03 )
               pfstate->arrived = false;*/
-           // sLog->outDebug(LOG_FILTER_MAPS, "<%s> IN PAUSA O ARRIVATO",u->GetName());
+           // TC_LOG_DEBUG("maps", "<%s> IN PAUSA O ARRIVATO",u->GetName());
             continue;
         }
 
@@ -518,7 +518,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
         {
             if ( pfstate->status == PATHFINDINGSTATUS_FINAL )
             {
-                sLog->outDebug(LOG_FILTER_MAPS, "<%s> Arrivato (%f %f %f).",u->GetName().c_str(),pfstate->lastx,pfstate->lasty,pfstate->lastz);
+                TC_LOG_DEBUG("maps", "<%s> Arrivato (%f %f %f).",u->GetName().c_str(),pfstate->lastx,pfstate->lasty,pfstate->lastz);
 
                 pfstate->arrived = true;
                 pfstate->lastx = pfstate->destx;
@@ -531,7 +531,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
                 continue;
             } else if ( pfstate->status == PATHFINDINGSTATUS_PARTIAL ) {
-                sLog->outDebug(LOG_FILTER_MAPS, "<%s> Calcolo nuova parte di percorso",u->GetName().c_str());
+                TC_LOG_DEBUG("maps", "<%s> Calcolo nuova parte di percorso",u->GetName().c_str());
 
                 pfstate->Calculate(m,u);
                 if ( pfstate->path.size() > 3 )
@@ -552,10 +552,10 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
             if ( pfstate->unittypeid == TYPEID_PLAYER )//Aggiorna la posizione
             {
                 Player * p = (Player*)u;
-                //sLog->outDebug(LOG_FILTER_MAPS, "CurrTime: %d waypointtime[%d] = %d",pfstate->currtime,pfstate->currwp,pfstate->waypointtime[pfstate->currwp]);
+                //TC_LOG_DEBUG("maps", "CurrTime: %d waypointtime[%d] = %d",pfstate->currtime,pfstate->currwp,pfstate->waypointtime[pfstate->currwp]);
                 if ( pfstate->currtime >= pfstate->waypointtime[pfstate->currwp+1])
                 {
-                    //sLog->outDebug(LOG_FILTER_MAPS, "Waypoint %d , diff = %d",pfstate->currwp,timediff);
+                    //TC_LOG_DEBUG("maps", "Waypoint %d , diff = %d",pfstate->currwp,timediff);
                     /*float x = pfstate->lastx+(pfstate->path[pfstate->currwp*3+0]-pfstate->lastx)*coeff;//Crea un movimento + lungo così che non si formano scatti in caso di lag
                     float y = pfstate->lasty+(pfstate->path[pfstate->currwp*3+1]-pfstate->lasty)*coeff;// In questo modo quando si cambia waypoint è molto difficile che la unit sia già arrivata nella posizione
                     float z = pfstate->lastz+(pfstate->path[pfstate->currwp*3+2]-pfstate->lastz)*coeff;*/
@@ -593,7 +593,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
             if ( pfstate->unittypeid == TYPEID_UNIT )
             {
                 
-                //sLog->outDebug(LOG_FILTER_MAPS, "CurrTime: %d waypointtime[%d] = %d, arrived = %s",pfstate->currtime,pfstate->currwp,pfstate->waypointtime[pfstate->currwp],pfstate->arrived ? "true" : "false");
+                //TC_LOG_DEBUG("maps", "CurrTime: %d waypointtime[%d] = %d, arrived = %s",pfstate->currtime,pfstate->currwp,pfstate->waypointtime[pfstate->currwp],pfstate->arrived ? "true" : "false");
                 if ( pfstate->currtime >= pfstate->waypointtime[pfstate->currwp+1] )
                 {
                     //
@@ -663,7 +663,7 @@ void PathFindingState::Pause()//Queste tre funziono vnano chiamate solo dal thre
 
     if ( u )
     {
-        sLog->outDebug(LOG_FILTER_MAPS, "Movement %p: Pause()",this);
+        TC_LOG_DEBUG("maps", "Movement %p: Pause()",this);
         Map * m = u->GetMap();
 
         u->StopMoving();
@@ -725,7 +725,7 @@ Fa continuare il movimento dall'ultimo punto di pausa
 */
 void PathFindingState::UnPause()
 {
-    sLog->outDebug(LOG_FILTER_MAPS, "Movement %p: UnPause()",this);
+    TC_LOG_DEBUG("maps", "Movement %p: UnPause()",this);
     statelock.lock();
     mustrecalculate = true;
     pause = false;
@@ -858,7 +858,7 @@ void PathFindingMgr::RemovePathfind(PathFindingState * pf)
     PathFindingState * st = pf;
     if ( st )
         st->willdelete = true;
-    sLog->outDebug(LOG_FILTER_MAPS, "PathFindingMgr::RemovePathfind(%p)",pf);
+    TC_LOG_DEBUG("maps", "PathFindingMgr::RemovePathfind(%p)",pf);
 }
 /*std::vector<float> SubdividePath(TrinityVector3<float> startpoint,std::vector<float> origpath,Map * map, float stepsize)
 {
@@ -928,15 +928,15 @@ std::vector<float> SimplifyPath(std::vector<float> &origpath,std::vector<float> 
         delta = t.dist(vp1);
         if ( delta > 0.07 )
         {
-            sLog->outDebug(LOG_FILTER_MAPS, "WP %u : %f",uint32(newpath.size()/3),delta);
+            TC_LOG_DEBUG("maps", "WP %u : %f",uint32(newpath.size()/3),delta);
             Append3(newpath,origpath,i)
         }
     }
     for ( int i = 0; i < newpath.size()/3; i++ )
     {
-        //sLog->outDebug(LOG_FILTER_MAPS, "SimplifyPath: WAYPOINT %d : %f %f %f",i,newpath[i*3+0],newpath[i*3+1],newpath[i*3+2]);
+        //TC_LOG_DEBUG("maps", "SimplifyPath: WAYPOINT %d : %f %f %f",i,newpath[i*3+0],newpath[i*3+1],newpath[i*3+2]);
     }
-    //sLog->outDebug(LOG_FILTER_MAPS, "SimplifyPath: origwaypoints: %d newwaypoints: %d\n",origpath.size()/3,newpath.size()/3);
+    //TC_LOG_DEBUG("maps", "SimplifyPath: origwaypoints: %d newwaypoints: %d\n",origpath.size()/3,newpath.size()/3);
     std::vector<float> res;
     if ( newpath.size() < 6 )
         return res;
@@ -970,7 +970,7 @@ void PathFindingState::Calculate(Map* m,Unit * u)
         calculated = true;
         currtime = 0;
         currwp = 0;
-        sLog->outDebug(LOG_FILTER_MAPS,"<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
+        TC_LOG_DEBUG("maps","<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
         return;
 
 
@@ -982,7 +982,7 @@ void PathFindingState::Calculate(Map* m,Unit * u)
     path2send.clear();
     if ( u->GetUnitMovementFlags() & ( MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY ) )//I mob volanti non hanno pathfinding
     {
-        //sLog->outDebug(LOG_FILTER_MAPS, "\033[34mUnit %p flying\033[0m",u);
+        //TC_LOG_DEBUG("maps", "\033[34mUnit %p flying\033[0m",u);
         wpcount = 2;
         pathtemp.resize(6);
         pathtemp[0] = lastx;
@@ -1133,7 +1133,7 @@ void PathFindingState::Calculate(Map* m,Unit * u)
             ztoll = 0;
         if ( endwaypoint.dist(destination) > STEP_SIZE+0.2f+ztoll )
         {
-            sLog->outDebug(LOG_FILTER_MAPS,"Dest Unreachable ( %f (%f , %f ) )\n",endwaypoint.dist(destination),endwaypoint.z,destination.z);
+            TC_LOG_DEBUG("maps","Dest Unreachable ( %f (%f , %f ) )\n",endwaypoint.dist(destination),endwaypoint.z,destination.z);
             
             status = PATHFINDINGSTATUS_DEST_UNREACHABLE;
             if ( isCharge && origwpcount > 1 )
@@ -1196,13 +1196,13 @@ void PathFindingState::Calculate(Map* m,Unit * u)
     if ( debug )
         m->mtcalls->post(boost::bind(&PathViewer::UpdatePath,debug,path));
 
-    sLog->outDebug(LOG_FILTER_MAPS,"<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
+    TC_LOG_DEBUG("maps","<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
 }
 
 uint32 idcounter = 0;
 PathFindingState* PathFindingMgr::AddPathfind(Unit* u, float destx, float desty, float destz, float speed, bool isCharge)
 {
-    sLog->outDebug(LOG_FILTER_MAPS, "PathFindingMgr::AddPathfind(%p,%f;%f,%f)",u,destx,desty,destz);
+    TC_LOG_DEBUG("maps", "PathFindingMgr::AddPathfind(%p,%f;%f,%f)",u,destx,desty,destz);
     //boost::mutex::scoped_lock lock(listsmutex);
 
     if (!u )
@@ -1369,7 +1369,7 @@ bool Map::NavMeshLOS(float startx, float starty, float startz, float endx, float
     dtNavMeshQuery* navQuery = new dtNavMeshQuery;
     if ( !navQuery->init(m_navMesh,1000) )
     {
-        sLog->outError(LOG_FILTER_GENERAL, "Impossibile inizializzare dtNavMeshQuery Map::NavMeshLOS(%f,%f,%f,%f,%f,%f)",startx,starty,startz,endx,endy,endz);
+        TC_LOG_ERROR("general", "Impossibile inizializzare dtNavMeshQuery Map::NavMeshLOS(%f,%f,%f,%f,%f,%f)",startx,starty,startz,endx,endy,endz);
 
         delete navQuery;
         return true;
@@ -1468,10 +1468,10 @@ void CorrectPetPosition(PathFindingState* pfstate, dtNavMeshQuery * navQuery, fl
     if ( PetOwnerRef  != 0)
     {
         /*int res = navQuery->raycast(PetOwnerRef,popc,endPos,mPathFilter,t,hitNormal,mPathResults,maxpathresults);
-        sLog->outDebug(LOG_FILTER_MAPS, "RAYCAST: res=%d , t=%f ",res,t);
+        TC_LOG_DEBUG("maps", "RAYCAST: res=%d , t=%f ",res,t);
         if ( res != 0 && t < FLT_MAX && t < 100.0)
         {
-            sLog->outDebug(LOG_FILTER_MAPS, "Il pet non è in LOS sulla navmesh con il proprietario , correzione destinazione");
+            TC_LOG_DEBUG("maps", "Il pet non è in LOS sulla navmesh con il proprietario , correzione destinazione");
             TrinityVector3<float> vDir(hitNormal[2],hitNormal[0],hitNormal[1]);
             TrinityVector3<float> ownerPos(petownerpos[2],petownerpos[0],petownerpos[1]);
             TrinityVector3<float> newDestifFail = ownerPos+(vDir*t);
@@ -1481,11 +1481,11 @@ void CorrectPetPosition(PathFindingState* pfstate, dtNavMeshQuery * navQuery, fl
             float hitNormalDX[3];
             float endPosDX[3] = { newDest_DX.y, newDest_DX.z, newDest_DX.x };
             int resDX = navQuery->raycast(PetOwnerRef,popc,endPosDX,mPathFilter,tDX,hitNormalDX,mPathResults,maxpathresults);
-            sLog->outDebug(LOG_FILTER_MAPS, "Tentativo di spostare il pet a destra");
+            TC_LOG_DEBUG("maps", "Tentativo di spostare il pet a destra");
             dtPolyRef oldEndRef = mEndRef;
             if ( resDX != 0 && !isinf(tDX) && tDX < 100.0)
             {
-                sLog->outDebug(LOG_FILTER_MAPS, "Destra dell'owner del pet occupata!");
+                TC_LOG_DEBUG("maps", "Destra dell'owner del pet occupata!");
                 endPos[0] = petownerpos[0];
                 endPos[1] = petownerpos[1];
                 endPos[2] = petownerpos[2];
@@ -1504,7 +1504,7 @@ void CorrectPetPosition(PathFindingState* pfstate, dtNavMeshQuery * navQuery, fl
 mEndRef = navQuery->findNearestPoly(endPos,mPolyPickingExtents,mPathFilter,0);
 if ( mEndRef == 0 )
 {
-sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare la referenza di fine percorso per la nuova destinazione pet");
+TC_LOG_DEBUG("maps", "Impossibile trovare la referenza di fine percorso per la nuova destinazione pet");
 mEndRef = oldEndRef;
 
 }*/
@@ -1518,11 +1518,11 @@ mEndRef = oldEndRef;
             float hitNormalDX[3];
             float endPosDX[3] = { newDest_DX.y, newDest_DX.z, newDest_DX.x };
             int resDX = navQuery->raycast(PetOwnerRef,popc,endPosDX,mPathFilter,tDX,hitNormalDX,mPathResults,maxpathresults);
-            sLog->outDebug(LOG_FILTER_MAPS, "Tentativo di spostare il pet a destra");
+            TC_LOG_DEBUG("maps", "Tentativo di spostare il pet a destra");
             dtPolyRef oldEndRef = mEndRef;
             if ( resDX != 0 && !isinf(tDX) && tDX < 100.0)
             {
-                sLog->outDebug(LOG_FILTER_MAPS, "Destra dell'owner del pet occupata!");
+                TC_LOG_DEBUG("maps", "Destra dell'owner del pet occupata!");
                 endPos[0] = petownerpos[0];
                 endPos[1] = petownerpos[1];
                 endPos[2] = petownerpos[2];
@@ -1539,7 +1539,7 @@ mEndRef = oldEndRef;
 mEndRef = navQuery->findNearestPoly(endPos,mPolyPickingExtents,mPathFilter,0);
 if ( mEndRef == 0 )
 {
-sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare la referenza di fine percorso per la nuova destinazione pet");
+TC_LOG_DEBUG("maps", "Impossibile trovare la referenza di fine percorso per la nuova destinazione pet");
 mEndRef = oldEndRef;
 
 }*/
@@ -1549,11 +1549,11 @@ mEndRef = oldEndRef;
             float pp2[3] = { 10.0 , 10.0 , 10.0 };
 
             navQuery->findNearestPoly(endPos,pp2,mPathFilter,&mEndRef,NULL);
-            sLog->outDebug(LOG_FILTER_MAPS,"endRef2");
+            TC_LOG_DEBUG("maps","endRef2");
         }
         if (!mEndRef)
         {
-            sLog->outDebug(LOG_FILTER_MAPS,"endref2->no");
+            TC_LOG_DEBUG("maps","endref2->no");
             mEndRef = PetOwnerRef;
             return;
         }
@@ -1562,7 +1562,7 @@ mEndRef = oldEndRef;
         navQuery->findDistanceToWall(PetOwnerRef,petownerpos,maxdist+0.1,mPathFilter,&hitdist,hitpos,hitNormal);
         if ( hitdist < maxdist )
         {
-            sLog->outDebug(LOG_FILTER_MAPS,"Correzione pet ( dWall ) (%f , %f , %f )", hitpos[2], hitpos[0], hitpos[1]);
+            TC_LOG_DEBUG("maps","Correzione pet ( dWall ) (%f , %f , %f )", hitpos[2], hitpos[0], hitpos[1]);
             memcpy(endPos,hitpos,sizeof(float)*3);
 
         }
@@ -1590,7 +1590,7 @@ inline void PrintDetourError(dtStatus s)
         ERRCHKDT(DT_INVALID_PARAM)
         ERRCHKDT(DT_OUT_OF_NODES)
         
-        sLog->outError(LOG_FILTER_GENERAL, "%s",errstr.str().c_str());
+        TC_LOG_ERROR("general", "%s",errstr.str().c_str());
         
     }
 }
@@ -1657,7 +1657,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
     /*pos.m_positionX = destx;
     pos.m_positionY = desty;
     pos.m_positionZ = destz;*/
-    sLog->outDebug(LOG_FILTER_MAPS, "Map::Pathfind(%f,%f,%f,%f,%f,%f)",srcx,srcy,srcz,destx,desty,destz);
+    TC_LOG_DEBUG("maps", "Map::Pathfind(%f,%f,%f,%f,%f,%f)",srcx,srcy,srcz,destx,desty,destz);
     mPathFilter->setIncludeFlags(inclflags);
     mPathFilter->setExcludeFlags(exclflags);
     //dtNavMesh* myNavMesh = m_navMesh;
@@ -1679,7 +1679,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
             {
                 unsigned int maxpathresults = sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_PATH_SIZE);
                 dtPolyRef * mPathResults = (dtPolyRef*)malloc(sizeof(dtPolyRef)*maxpathresults);
-                sLog->outDebug(LOG_FILTER_MAPS, "Destinazione pet non esistente");
+                TC_LOG_DEBUG("maps", "Destinazione pet non esistente");
                 CorrectPetPosition(pfstate,navQuery,petownerpos,endPos,mPathFilter,mPolyPickingExtents,mPathResults,maxpathresults,mEndRef);
                 free(mPathResults);
             }
@@ -1716,13 +1716,13 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                 dtStatus s2 = navQuery->findPath(mStartRef,mEndRef,startPos, endPos, mPathFilter ,mPathResults,&mNumPathResults,maxpathresults);
                 PrintDetourError(s2);
                 if(mNumPathResults <= 0) {
-                    sLog->outDebug(LOG_FILTER_MAPS, "Pathfinding fallito.");
+                    TC_LOG_DEBUG("maps", "Pathfinding fallito.");
                     result.result = PATHFIND_NO_PATHS_TO_TARGET;
                     delete navQuery;
                     free(mPathResults);
                     return result;
                 }
-                sLog->outDebug(LOG_FILTER_MAPS, "Pathfinding: MaxWP: %d MaxPolys:%d",sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_WAYPOINTS),sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_PATH_SIZE));
+                TC_LOG_DEBUG("maps", "Pathfinding: MaxWP: %d MaxPolys:%d",sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_WAYPOINTS),sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_PATH_SIZE));
                 //float actualpath[3*sWorld->getIntConfigMT(CONFIG_PATHFINDING_MAX_WAYPOINTS)];
                 unsigned char* flags = 0;
                 dtPolyRef* polyrefs = 0;
@@ -1802,7 +1802,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                     float h = 0;
                     if ( !polys[0] )
                     {
-                        sLog->outError(LOG_FILTER_GENERAL, "Pathfinding: Invalid poly ref on getPolyHeight");
+                        TC_LOG_ERROR("general", "Pathfinding: Invalid poly ref on getPolyHeight");
                     }
                     dtStatus s = navQuery->getPolyHeight(polys[0], result, &h);
                    // printf("getPolyHeight: result[0] = %f result[1] = %f result[2] = %f , h = %f\n",result[0],result[1],result[2],h); 
@@ -1888,7 +1888,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                 ;
                 if (m_nsmoothPath < 2)
                 {
-                    sLog->outDebug(LOG_FILTER_MAPS, "NavMesh corrotta o errore interno.");
+                    TC_LOG_DEBUG("maps", "NavMesh corrotta o errore interno.");
                     result.result = PATHFIND_ERROR_NAVMESH;
                     result.path = NULL;
                     free(m_smoothPath);
@@ -1908,9 +1908,9 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                     result.path[c*3+1] = m_smoothPath[(c)*3+0];
                     result.path[c*3+2] = m_smoothPath[(c)*3+1];  //actualpath[c*3+1];
                     //
-                    sLog->outDebug(LOG_FILTER_MAPS, "Waypoint X=%f,Y=%f,Z=%f",result.path[c*3+0],result.path[c*3+1],result.path[c*3+2]);
+                    TC_LOG_DEBUG("maps", "Waypoint X=%f,Y=%f,Z=%f",result.path[c*3+0],result.path[c*3+1],result.path[c*3+2]);
                 }
-                sLog->outDebug(LOG_FILTER_MAPS, "Tempo impiegato: %f",getcurrenttime()-tstart);
+                TC_LOG_DEBUG("maps", "Tempo impiegato: %f",getcurrenttime()-tstart);
                 free(m_smoothPath);
                 delete polys;
                 free(mPathResults);
@@ -1919,7 +1919,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                 return result;
             }
             else {
-                sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare il poligono di partenza/fine : start=%llu, end=%llu",mStartRef,mEndRef);
+                TC_LOG_DEBUG("maps", "Impossibile trovare il poligono di partenza/fine : start=%llu, end=%llu",mStartRef,mEndRef);
                 if (mStartRef == 0)
                 {
                     result.result = PATHFIND_CANT_FIND_START_NAVMESH;
@@ -1932,7 +1932,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
             }
         }
     } else {
-        sLog->outError(LOG_FILTER_GENERAL, "NavMesh non caricata");
+        TC_LOG_ERROR("general", "NavMesh non caricata");
         result.result = PATHFIND_NAVMESH_NOT_LOADED;
         result.path = new float[6];
         result.path[0] = srcx;
@@ -1992,7 +1992,7 @@ void Map::UnloadNavMesh(int gx, int gy)
     uint32 packedGridPos = packTileID(uint32(gx), uint32(gy));
     if(m_mmapTileMap.find(packedGridPos) == m_mmapTileMap.end())
     {
-        sLog->outDebug(LOG_FILTER_MAPS, "Impossibile fare l'unload della mmtile (%d,%d)\n",gx,gy);
+        TC_LOG_DEBUG("maps", "Impossibile fare l'unload della mmtile (%d,%d)\n",gx,gy);
         return;
     }
 
@@ -2004,13 +2004,13 @@ void Map::UnloadNavMesh(int gx, int gy)
 
     if (!m_navMesh->removeTile(m_navMesh->getTileRefAt(int(tileX), int(tileY),1), 0, 0))
     {
-        sLog->outError(LOG_FILTER_GENERAL, "Impossibile fare l'unload della mmtile (%d,%d):Fallito removeTile\n",gx,gy);
+        TC_LOG_ERROR("general", "Impossibile fare l'unload della mmtile (%d,%d):Fallito removeTile\n",gx,gy);
         return;
 
     }
     m_mmapTileMap.erase(packedGridPos);
 
-    sLog->outDebug(LOG_FILTER_MAPS, "Unloaded mmtile %03i[%02i,%02i] from %03i(%u)", i_id, gx, gy, i_id, GetInstanceId());
+    TC_LOG_DEBUG("maps", "Unloaded mmtile %03i[%02i,%02i] from %03i(%u)", i_id, gx, gy, i_id, GetInstanceId());
 }
 
 

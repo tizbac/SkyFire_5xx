@@ -83,22 +83,22 @@ include_directories(
 )
 
 IF ( NOT STATIC_LINK )
-add_library(shared STATIC
+add_library(skyfireshared SHARED
   ${shared_STAT_SRCS}
   ${shared_STAT_PCH_SRC}
 )
 
-target_link_libraries(shared
+target_link_libraries(skyfireshared
   ${ACE_LIBRARY} g3dlib gsoap ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} 
 )
-install(TARGETS shared DESTINATION lib)
+install(TARGETS skyfireshared DESTINATION lib)
 ELSE ( NOT STATIC_LINK )
-add_library(shared STATIC ${shared_STAT_SRCS})
+add_library(skyfireshared STATIC ${shared_STAT_SRCS})
 
 ENDIF ( NOT STATIC_LINK )
 
 
 if (USE_COREPCH)
-	cotire(shared)
+	cotire(skyfireshared)
 endif()
 

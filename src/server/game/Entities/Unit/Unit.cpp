@@ -408,7 +408,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
                 path2sendtime = totaltime;
                 return;
         }
-        sLog->outDebug(LOG_FILTER_MAPS, "<%s> Send monstermove Waypoints: %d, totaltime=%u",GetName(),path.size()/3,totaltime);
+        TC_LOG_DEBUG("maps", "<%s> Send monstermove Waypoints: %d, totaltime=%u",GetName().c_str(),path.size()/3,totaltime);
         std::vector<G3D::Vector3> points;
         for ( int i = 0; i < path.size()/3; i++ )
         {
@@ -418,7 +418,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
         WorldPacket data(SMSG_MONSTER_MOVE, 1+12+4+1+4+4+4+4*path.size()+GetPackGUID().size());
         data.append(GetPackGUID());
         data << uint8(0);                                       // new in 3.1
-        sLog->outDebug(LOG_FILTER_MAPS,"<%s> WPMM: %f %f %f",GetName(),path[0],path[1], path[2]);
+        TC_LOG_DEBUG("maps","<%s> WPMM: %f %f %f",GetName().c_str(),path[0],path[1], path[2]);
         data << path[0] << path[1] << path[2];//GetPositionX() << GetPositionY() << GetPositionZ();
         data << id;
         data << uint8(0);
@@ -434,7 +434,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
         else
         {
                 data << uint32(1);
-                sLog->outError("%s : totaltime = 0!\n",__PRETTY_FUNCTION__);
+                TC_LOG_ERROR("maps","%s : totaltime = 0!\n",__PRETTY_FUNCTION__);
         }
         data << uint32((path.size()/3)-1);
         if ( !catmull_rom )
@@ -454,7 +454,7 @@ void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 i
         }else{
                 for ( int i = 1; i < path.size()/3; i++)
                 {
-                        sLog->outDebug(LOG_FILTER_MAPS,"WPMM: %f %f %f",path[i*3], path[i*3+1], path[i*3+2]);
+                        TC_LOG_DEBUG("maps","WPMM: %f %f %f",path[i*3], path[i*3+1], path[i*3+2]);
                         data << path[i*3]<< path[i*3+1] << path[i*3+2];
 
                 }
@@ -3082,7 +3082,7 @@ bool Unit::IsInWater() const
 {
     if ( ! Trinity::IsValidMapCoord(GetPositionX(),GetPositionY(), GetPositionZ()) )
     {
-            sLog->outError("Unit::IsInWater() NPC '%s' ( GUID %llu ): Coordinate non valide.",GetName(),GetGUID());
+            TC_LOG_ERROR("maps","Unit::IsInWater() NPC '%s' ( GUID %llu ): Coordinate non valide.",GetName().c_str(),GetGUID());
             return false;
     }
 
