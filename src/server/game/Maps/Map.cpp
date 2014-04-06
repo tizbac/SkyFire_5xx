@@ -37,6 +37,9 @@
 #include "Vehicle.h"
 #include "VMapFactory.h"
 
+#include "Pathfinding.h"
+
+
 u_map_magic MapMagic        = { {'M','A','P','S'} };
 u_map_magic MapVersionMagic = { {'v','1','.','3'} };
 u_map_magic MapAreaMagic    = { {'A','R','E','A'} };
@@ -51,6 +54,14 @@ GridState* si_GridStates[MAX_GRID_STATE];
 
 Map::~Map()
 {
+    loadedmapsmutex.lock();
+    loadedmaps.erase(this);
+    loadedmapsmutex.unlock();
+    boost::mutex::scoped_lock lock2(*(unloadlocks[allocId%unloadlocks.size()]));
+    boost::mutex::scoped_lock lock(navmeshmutex);
+    /*m_pMgr->exit = true;
+    pathfindthread->join();*/
+
     sScriptMgr->OnDestroyMap(this);
 
     UnloadAll();
@@ -81,6 +92,11 @@ Map::~Map()
         sScriptMgr->DecreaseScheduledScriptCount(m_scriptSchedule.size());
 
     MMAP::MMapFactory::createOrGetMMapManager()->unloadMapInstance(GetId(), i_InstanceId);
+    
+    if ( m_navMesh )
+      delete m_navMesh;
+    delete mtcalls;
+
 }
 
 bool Map::ExistMap(uint32 mapid, int gx, int gy)
@@ -212,6 +228,7 @@ void Map::LoadMapAndVMap(int gx, int gy)
         LoadVMap(gx, gy);
         LoadMMap(gx, gy);
     }
+    LoadNavMesh(gx,gy);
 }
 
 void Map::InitStateMachine()
@@ -249,11 +266,23 @@ i_scriptLock(false)
             setNGrid(NULL, idx, j);
         }
     }
+    mtcalls = new boost::asio::io_service;
+    m_navMesh = NULL;
+    m_pMgr = new PathFindingMgr;
+    m_pMgr->map = this;
+
 
     //lets initialize visibility distance for map
     Map::InitVisibilityDistance();
 
     sScriptMgr->OnCreateMap(this);
+    
+    allocId = maphashcount;
+    maphashcount++;
+    loadedmapsmutex.lock();
+    loadedmaps[this] = allocId;
+    loadedmapsmutex.unlock();
+
 }
 
 void Map::InitVisibilityDistance()
@@ -380,6 +409,7 @@ void Map::DeleteFromWorld(T* obj)
 template<>
 void Map::DeleteFromWorld(Player* player)
 {
+    boost::mutex::scoped_lock lock(sObjectAccessor->deletelock);
     sObjectAccessor->RemoveObject(player);
     sObjectAccessor->RemoveUpdateObject(player); /// @todo I do not know why we need this, it should be removed in ~Object anyway
     delete player;
@@ -607,6 +637,8 @@ void Map::VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<Trinity::Obj
 void Map::Update(const uint32 t_diff)
 {
     _dynamicTree.update(t_diff);
+    mtcalls->run();
+    mtcalls->reset();
     /// update worldsessions for existing players
     for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
     {
@@ -1326,7 +1358,7 @@ bool Map::UnloadGrid(NGridType& ngrid, bool unloadAll)
         }
         else
             ((MapInstanced*)m_parentMap)->RemoveGridMapReference(GridCoord(gx, gy));
-
+        UnloadNavMesh(gx,gy);
         GridMaps[gx][gy] = NULL;
     }
     TC_LOG_DEBUG("maps", "Unloading grid[%u, %u] for map %u finished", x, y, GetId());

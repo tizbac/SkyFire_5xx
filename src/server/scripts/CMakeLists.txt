@@ -187,5 +187,6 @@ add_dependencies(scripts revision.h)
 
 # Generate precompiled header
 if (USE_SCRIPTPCH)
+  set_target_properties(scripts PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "PrecompiledHeaders/ScriptPCH.h")
   cotire(scripts)
 endif()

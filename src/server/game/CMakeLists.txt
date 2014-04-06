@@ -147,6 +147,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/dep/g3dlite/include
   ${CMAKE_SOURCE_DIR}/dep/SFMT
   ${CMAKE_SOURCE_DIR}/dep/zlib
+  ${CMAKE_SOURCE_DIR}/src/server
   ${CMAKE_SOURCE_DIR}/src/server/collision
   ${CMAKE_SOURCE_DIR}/src/server/collision/Management
   ${CMAKE_SOURCE_DIR}/src/server/collision/Models
@@ -263,5 +264,6 @@ endif ( NOT STATIC_LINK )
 
 # Generate precompiled header
 if (USE_COREPCH)
+  set_target_properties(game PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "PrecompiledHeaders/gamePCH.h")
   cotire(game)
 endif ()

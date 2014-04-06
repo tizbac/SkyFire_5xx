@@ -33,7 +33,7 @@
 #include "MapRefManager.h"
 #include "DynamicTree.h"
 #include "GameObjectModel.h"
-
+#include <boost/thread.hpp>
 #include <bitset>
 #include <list>
 
@@ -53,6 +53,20 @@ struct Position;
 class Battleground;
 class MapInstanced;
 class InstanceMap;
+class dtNavMesh;
+class dtMeshTile;
+struct pathfindResult;
+class PathFindingState;
+
+namespace boost{
+    class thread;
+    class mutex;
+    namespace asio{
+        class io_service;
+    }
+}
+class PathFindingMgr;
+
 class Transport;
 namespace Trinity { struct ObjectUpdater; }
 
@@ -252,7 +266,7 @@ class Map : public GridRefManager<NGridType>
         virtual ~Map();
 
         MapEntry const* GetEntry() const { return i_mapEntry; }
-
+        
         // currently unused for normal maps
         bool CanUnload(uint32 diff)
         {
@@ -275,6 +289,26 @@ class Map : public GridRefManager<NGridType>
         virtual void Update(const uint32);
 
         float GetVisibilityRange() const { return m_VisibleDistance; }
+        
+        //PATHFINDING-----
+        uint32 allocId;
+        pathfindResult Pathfind(PathFindingState * pfstate,float srcx, float srcy , float srcz , float destx , float desty , float destz,uint16 inclflags,uint16 exclflags,float searchdist = 2.0f);
+        std::vector<G3D::Vector3> PathFindDirect(Unit * moving, G3D::Vector3 start , G3D::Vector3 end);
+        bool NavMeshLoaded(int gx , int gy);
+        bool NavMeshLOS(float startx, float starty, float startz, float endx,float endy, float endz);
+        boost::asio::io_service * mtcalls;
+        dtMeshTile* GetNavMeshTile(float x, float y);
+        void UnloadNavMesh(int gx, int gy);
+        PathFindingMgr * GetPathFindingMgr() { return m_pMgr ;}
+        Position getNextPositionOnPathToLocation(const float startx, const float starty, const float startz, const float endx, const float endy, const float endz);
+        UNORDERED_MAP<uint32, uint32> m_mmapTileMap;
+        dtNavMesh *m_navMesh;
+        float navmeshLOS_coll_point[3];
+        boost::thread * pathfindthread;
+        PathFindingMgr * m_pMgr;
+        boost::mutex navmeshmutex;
+        void LoadNavMesh(int gx, int gy);
+        //-----
         //function for setting up visibility distance for maps on per-type/per-Id basis
         virtual void InitVisibilityDistance();
 
