@@ -168,7 +168,7 @@ void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, 
 
         return;
     }
-    sLog->outError("SendMonsterMoveGUID");
+    //sLog->outError("SendMonsterMoveGUID");
     bool fly;
     fly = ( u->GetUnitMovementFlags() & MOVEMENTFLAG_DISABLE_GRAVITY ) != 0;
     u->SendMonsterMove(path,time,id,true,fly);
