@@ -34,6 +34,7 @@ endif()
 
 add_subdirectory(g3dlite)
 add_subdirectory(recastnavigation)
+add_subdirectory(boost_1_42_0)
 
 if(SERVERS)
   add_subdirectory(gsoap)
