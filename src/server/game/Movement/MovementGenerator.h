@@ -28,6 +28,25 @@
 #include "MotionMaster.h"
 
 class Unit;
+class PathFindingState;
+class PathFindingMovementGenerator
+{
+public:
+  PathFindingMovementGenerator(){ pfstate = 0; }
+  PathFindingState * GetPathFindingStateX()
+  {
+    return pfstate;
+  }
+  void SetPathFindingStateX(PathFindingState * pf)
+  {
+    pfstate = pf;
+  }
+private:
+  PathFindingState* pfstate;
+  
+};
+
+
 
 class MovementGenerator
 {
@@ -47,10 +66,15 @@ class MovementGenerator
 
         // used by Evade code for select point to evade with expected restart default movement
         virtual bool GetResetPosition(Unit*, float& /*x*/, float& /*y*/, float& /*z*/) { return false; }
+        
+        virtual PathFindingState * GetPathFindingState(){return NULL;}
+        virtual void SetPathFindingState(PathFindingState * st){}
+
 };
 
 template<class T, class D>
-class MovementGeneratorMedium : public MovementGenerator
+class MovementGeneratorMedium : public MovementGenerator , public PathFindingMovementGenerator
+
 {
     public:
         void Initialize(Unit* u)

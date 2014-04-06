@@ -1291,7 +1291,16 @@ class Unit : public WorldObject
 
         UnitAI* GetAI() { return i_AI; }
         void SetAI(UnitAI* newAI) { i_AI = newAI; }
-
+        
+        //Pathfinding
+        std::vector<float> path2send;//Il percorso da inviare non appena finisce un eventuale salto
+        uint32 path2sendtime;
+        bool hastosendpath;
+        uint32 remainingjumptime;    
+        boost::mutex deletelock;
+        void SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 id,bool catmull_rom,bool flying);
+        //--------
+        
         void AddToWorld();
         void RemoveFromWorld();
 
@@ -2203,9 +2212,9 @@ class Unit : public WorldObject
         float m_weaponDamage[MAX_ATTACK][2];
         bool m_canModifyStats;
         VisibleAuraMap m_visibleAuras;
-
+public:
         float m_speed_rate[MAX_MOVE_TYPE];
-
+protected:
         CharmInfo* m_charmInfo;
         SharedVisionList m_sharedVision;
 

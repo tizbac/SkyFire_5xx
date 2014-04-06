@@ -20,7 +20,9 @@
 #include "MotionMaster.h"
 #include "CreatureAISelector.h"
 #include "Creature.h"
-
+#include "HomeMovementGeneratorPathFind.h"
+#include "PointMovementGeneratorPathFind.h"
+#include "TargetedMovementGeneratorPathFind.h"
 #include "ConfusedMovementGenerator.h"
 #include "FleeingMovementGenerator.h"
 #include "HomeMovementGenerator.h"
@@ -32,6 +34,7 @@
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
 #include <cassert>
+#include "Pathfinding.h"
 
 inline bool isStatic(MovementGenerator *mv)
 {
@@ -204,6 +207,10 @@ void MotionMaster::MoveTargetedHome()
     {
         TC_LOG_DEBUG("misc", "Creature (Entry: %u GUID: %u) targeted home", _owner->GetEntry(), _owner->GetGUIDLow());
         Mutate(new HomeMovementGenerator<Creature>(), MOTION_SLOT_ACTIVE);
+        if ( sWorld->getBoolConfig ( CONFIG_PATHFINDING_ENABLED ) )
+            Mutate ( new HomeMovementGeneratorPathFind<Creature>(), MOTION_SLOT_ACTIVE );
+        else
+            Mutate(new HomeMovementGenerator<Creature>(), MOTION_SLOT_ACTIVE);
     }
     else if (_owner->GetTypeId() == TYPEID_UNIT && _owner->ToCreature()->GetCharmerOrOwnerGUID())
     {
@@ -212,7 +219,10 @@ void MotionMaster::MoveTargetedHome()
         if (target)
         {
             TC_LOG_DEBUG("misc", "Following %s (GUID: %u)", target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature", target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : ((Creature*)target)->GetDBTableGUIDLow());
-            Mutate(new FollowMovementGenerator<Creature>(target, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE), MOTION_SLOT_ACTIVE);
+            if ( sWorld->getBoolConfig ( CONFIG_PATHFINDING_ENABLED ) )
+                Mutate ( new FollowMovementGeneratorPathFind<Creature> ( *target,PET_FOLLOW_DIST,PET_FOLLOW_ANGLE ), MOTION_SLOT_ACTIVE );
+            else
+                Mutate(new FollowMovementGenerator<Creature>(target, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE), MOTION_SLOT_ACTIVE);
         }
     }
     else
@@ -249,7 +259,10 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
             _owner->GetGUIDLow(),
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
-        Mutate(new ChaseMovementGenerator<Player>(target, dist, angle), MOTION_SLOT_ACTIVE);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new ChaseMovementGeneratorPathFind<Player> ( *target,dist,angle ), MOTION_SLOT_ACTIVE );
+        else
+            Mutate(new ChaseMovementGenerator<Player>(target, dist, angle), MOTION_SLOT_ACTIVE);
     }
     else
     {
@@ -257,7 +270,10 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
             _owner->GetEntry(), _owner->GetGUIDLow(),
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
-        Mutate(new ChaseMovementGenerator<Creature>(target, dist, angle), MOTION_SLOT_ACTIVE);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new ChaseMovementGeneratorPathFind<Creature> ( *target,dist,angle ), MOTION_SLOT_ACTIVE );
+        else
+            Mutate(new ChaseMovementGenerator<Creature>(target, dist, angle), MOTION_SLOT_ACTIVE);
     }
 }
 
@@ -273,7 +289,10 @@ void MotionMaster::MoveFollow(Unit* target, float dist, float angle, MovementSlo
         TC_LOG_DEBUG("misc", "Player (GUID: %u) follow to %s (GUID: %u)", _owner->GetGUIDLow(),
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
-        Mutate(new FollowMovementGenerator<Player>(target, dist, angle), slot);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new FollowMovementGeneratorPathFind<Player> ( *target,dist,angle ), slot );
+        else
+            Mutate(new FollowMovementGenerator<Player>(target, dist, angle), slot);
     }
     else
     {
@@ -281,7 +300,10 @@ void MotionMaster::MoveFollow(Unit* target, float dist, float angle, MovementSlo
             _owner->GetEntry(), _owner->GetGUIDLow(),
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
-        Mutate(new FollowMovementGenerator<Creature>(target, dist, angle), slot);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new FollowMovementGeneratorPathFind<Creature> ( *target,dist,angle ), slot );
+        else
+            Mutate(new FollowMovementGenerator<Creature>(target, dist, angle), slot);
     }
 }
 
@@ -412,13 +434,19 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id,
     if (_owner->GetTypeId() == TYPEID_PLAYER)
     {
         TC_LOG_DEBUG("misc", "Player (GUID: %u) charge point (X: %f Y: %f Z: %f)", _owner->GetGUIDLow(), x, y, z);
-        Mutate(new PointMovementGenerator<Player>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new PointMovementGeneratorPathFind<Player> ( id, x, y, z, speed ), MOTION_SLOT_CONTROLLED );
+        else
+            Mutate(new PointMovementGenerator<Player>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
     }
     else
     {
         TC_LOG_DEBUG("misc", "Creature (Entry: %u GUID: %u) charge point (X: %f Y: %f Z: %f)",
             _owner->GetEntry(), _owner->GetGUIDLow(), x, y, z);
-        Mutate(new PointMovementGenerator<Creature>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
+            Mutate ( new PointMovementGeneratorPathFind<Creature> ( id, x, y, z, speed ), MOTION_SLOT_CONTROLLED );
+        else
+            Mutate(new PointMovementGenerator<Creature>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
     }
 }
 

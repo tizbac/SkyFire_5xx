@@ -83,7 +83,9 @@
 #include "CalendarMgr.h"
 #include "BattlefieldMgr.h"
 #include "TransportMgr.h"
-
+#include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <boost/asio.hpp>
 ACE_Atomic_Op<ACE_Thread_Mutex, bool> World::m_stopEvent = false;
 uint8 World::m_ExitCode = SHUTDOWN_EXIT_CODE;
 ACE_Atomic_Op<ACE_Thread_Mutex, uint32> World::m_worldLoopCounter = 0;
@@ -95,6 +97,56 @@ float World::m_MaxVisibleDistanceInBGArenas   = DEFAULT_VISIBILITY_BGARENAS;
 int32 World::m_visibility_notify_periodOnContinents = DEFAULT_VISIBILITY_NOTIFY_PERIOD;
 int32 World::m_visibility_notify_periodInInstances  = DEFAULT_VISIBILITY_NOTIFY_PERIOD;
 int32 World::m_visibility_notify_periodInBGArenas   = DEFAULT_VISIBILITY_NOTIFY_PERIOD;
+
+
+extern std::map<Map*,uint32> loadedmaps;
+extern std::vector<boost::mutex *> unloadlocks;// Chiave: allocId % numthreads , Valore: mutex del gruppo di mappe
+std::vector<float> threadload;
+boost::mutex loadedmapsmutex;
+void UpdateMapPathfinding(Map * m,uint32 timediff);
+void PathFindingUpdateThread(uint32 id,World * world)
+{
+    uint32 timediff = 20;
+    printf("Thread di pathfinding con id %u creato",id);
+    if ( !world->getBoolConfigMT(CONFIG_PATHFINDING_ENABLED) )
+      sLog->outError("Pathfinding disabilitato!");
+    while ( world->destroying == false )
+    {
+        boost::system_time st = boost::get_system_time();
+        boost::system_time const sleeptime = boost::get_system_time()+boost::posix_time::milliseconds(20);
+        {
+            boost::mutex::scoped_lock lock(*unloadlocks[id]);
+            std::vector<Map*> maps2update;
+            loadedmapsmutex.lock();
+            for ( std::map<Map*,uint32>::iterator it = loadedmaps.begin(); it != loadedmaps.end(); it++ )
+            {
+                if ( (*it).second % world->getIntConfigMT(CONFIG_PATHFINDING_THREADS) == id )
+                {
+                    maps2update.push_back((*it).first);
+                }
+
+            }
+            loadedmapsmutex.unlock();
+            //printf("Thread %d update %d maps\n",id,maps2update.size());
+            /*if ( world->getBoolConfigMT(CONFIG_PATHFINDING_ENABLED) )// Le navmesh vengono caricate comunque in modo che esiste la possibilit�� di disabilitare / abilitare in runtime
+            {*///Meglio far terminare i pathfinding esistenti
+              for ( std::vector<Map*>::iterator it = maps2update.begin() ; it != maps2update.end(); it++ )
+              {
+                  UpdateMapPathfinding(*it,timediff);
+              }
+           // }
+        }
+        boost::posix_time::time_duration difnosl = boost::get_system_time()-st;
+        boost::thread::sleep(sleeptime);
+        boost::posix_time::time_duration dif = boost::get_system_time()-st;
+        timediff = dif.total_milliseconds();
+        threadload[id] = float(difnosl.total_microseconds())/float(20000.0);
+    }
+    printf("Thread di pathfinding con id %u uscito\n",id);
+
+}
+
+
 
 /// World constructor
 World::World()
@@ -121,13 +173,26 @@ World::World()
     m_updateTimeCount = 0;
 
     m_isClosed = false;
-
+    destroying = false;
     m_CleaningFlags = 0;
 }
 
 /// World destructor
 World::~World()
 {
+    destroying = true;
+    for ( int i = 0; i < pfthreads.size(); i++)
+    {
+        pfthreads[i]->join();
+        
+    }
+    printf("All pathfinding threads exited!\n");
+    for ( int i = 0; i < unloadlocks.size(); i++ )
+    {
+        delete unloadlocks[i];
+    }
+    unloadlocks.clear();
+
     ///- Empty the kicked session set
     while (!m_sessions.empty())
     {
@@ -401,6 +466,7 @@ bool World::RemoveQueuedPlayer(WorldSession* sess)
 /// Initialize config values
 void World::LoadConfigSettings(bool reload)
 {
+    boost::mutex::scoped_lock lock(configlock);
     if (reload)
     {
         if (!sConfigMgr->Reload())
@@ -434,6 +500,30 @@ void World::LoadConfigSettings(bool reload)
     ///- Send server info on login?
     m_int_configs[CONFIG_ENABLE_SINFO_LOGIN] = sConfigMgr->GetIntDefault("Server.LoginInfo", 0);
 
+    ///- Pathfinding
+    m_bool_configs[CONFIG_PATHFINDING_ENABLED] = ConfigMgr::GetBoolDefault("Pathfinding.Enabled",true);
+    m_int_configs[CONFIG_PATHFINDING_THREADS] = ConfigMgr::GetIntDefault("Pathfinding.Threads",2);
+    if ( pfthreads.size() != m_int_configs[CONFIG_PATHFINDING_THREADS] )
+    {
+      sLog->outString("(Re)spawn dei thread di pathfinding...");
+      destroying = true;
+      for ( int i = 0; i < pfthreads.size(); i++)
+      {
+          pfthreads[i]->join();
+      }
+      destroying = false;
+      pfthreads.clear();
+      threadload.resize(getIntConfig(CONFIG_PATHFINDING_THREADS));
+      for ( int i = 0; i < getIntConfig(CONFIG_PATHFINDING_THREADS); i++)
+      {
+          if ( unloadlocks.size() < getIntConfig(CONFIG_PATHFINDING_THREADS) )
+            unloadlocks.push_back(new boost::mutex);
+          pfthreads.push_back(new boost::thread(boost::bind(&PathFindingUpdateThread,pfthreads.size(),this)));
+          threadload[i] = 0.0;
+      }
+    }
+
+    
     ///- Read all rates from the config file
     rate_values[RATE_HEALTH]      = sConfigMgr->GetFloatDefault("Rate.Health", 1);
     if (rate_values[RATE_HEALTH] < 0)
@@ -646,6 +736,9 @@ void World::LoadConfigSettings(bool reload)
     /// @todo Add MonsterSight and GuarderSight (with meaning) in worldserver.conf or put them as define
     m_float_configs[CONFIG_SIGHT_MONSTER] = sConfigMgr->GetFloatDefault("MonsterSight", 50);
     m_float_configs[CONFIG_SIGHT_GUARDER] = sConfigMgr->GetFloatDefault("GuarderSight", 50);
+    m_float_configs[CONFIG_PATHFINDING_STEPSIZE] = ConfigMgr::GetFloatDefault("PathfindingStepSize",0.3);
+    m_int_configs[CONFIG_PATHFINDING_MAX_PATH_SIZE] = ConfigMgr::GetIntDefault("MaxPathfindingPolygons",1000);
+    m_int_configs[CONFIG_PATHFINDING_MAX_WAYPOINTS] = ConfigMgr::GetIntDefault("MaxPathfindingWaypoints",20);
 
     if (reload)
     {

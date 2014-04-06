@@ -61,8 +61,15 @@
 #include "WorldPacket.h"
 #include "MovementStructures.h"
 #include "WorldSession.h"
+#include "MoveSplineFlag.h"
+#include "MoveSplineInit.h"
+#include "Spline.h"
+#include "MovementPacketBuilder.h"
+#include "Pathfinding.h"
+#include <boost/thread.hpp>
 
 #include <math.h>
+extern uint32 wpflags;
 
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
@@ -189,7 +196,16 @@ Unit::Unit(bool isWorldObject) :
     m_canDualWield = false;
 
     m_movementCounter = 0;
+    
+    //pathfinding
+    hastosendpath = false;
+    path2sendtime = 0;
+    path2send.clear();
+    remainingjumptime = 0;
 
+    
+    //
+    
     m_state = 0;
     m_deathState = ALIVE;
 
@@ -285,6 +301,7 @@ void GlobalCooldownMgr::CancelGlobalCooldown(SpellInfo const* spellInfo)
 // Methods of class Unit
 Unit::~Unit()
 {
+    boost::mutex::scoped_lock lock(deletelock);
     // set current spells as deletable
     for (uint8 i = 0; i < CURRENT_MAX_SPELL; ++i)
         if (m_currentSpells[i])
@@ -344,6 +361,18 @@ void Unit::Update(uint32 p_time)
                 m_CombatTimer -= p_time;
         }
     }
+    if ( remainingjumptime <= p_time )
+    {
+            if (hastosendpath )
+            {
+                    hastosendpath = false;
+
+                    //SendMonsterMove(path2send,path2sendtime); Vediamo se  � meglio non inviare il percorso
+            }
+            remainingjumptime = 0;
+    }else{
+            remainingjumptime -= p_time;
+    }
 
     // not implemented before 3.0.2
     if (uint32 base_att = getAttackTimer(BASE_ATTACK))
@@ -366,6 +395,77 @@ void Unit::Update(uint32 p_time)
     UpdateSplineMovement(p_time);
     i_motionMaster.UpdateMotion(p_time);
 }
+
+void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 id,bool catmull_rom,bool flying)
+{
+
+        if ( path.size()/3 < 2 )
+                return;
+        if ( remainingjumptime > 0 )
+        {
+                hastosendpath = true;
+                path2send = path;
+                path2sendtime = totaltime;
+                return;
+        }
+        sLog->outDebug(LOG_FILTER_MAPS, "Send monstermove Waypoints: %d, totaltime=%u",path.size()/3,totaltime);
+        std::vector<G3D::Vector3> points;
+        for ( int i = 0; i < path.size()/3; i++ )
+        {
+            points.push_back(G3D::Vector3(path[i*3+0],path[i*3+1],path[i*3+2]));
+        }
+        
+        WorldPacket data(SMSG_MONSTER_MOVE, 1+12+4+1+4+4+4+4*path.size()+GetPackGUID().size());
+        data.append(GetPackGUID());
+        data << uint8(0);                                       // new in 3.1
+        sLog->outDebug(LOG_FILTER_MAPS,"WPMM: %f %f %f",path[0],path[1], path[2]);
+        data << path[0] << path[1] << path[2];//GetPositionX() << GetPositionY() << GetPositionZ();
+        data << id;
+        data << uint8(0);
+        Movement::MoveSplineFlag splineflags;
+        splineflags = 0;
+        splineflags.catmullrom = catmull_rom;
+        splineflags.flying = flying;
+        splineflags.walkmode = !flying;
+
+        data << uint32(splineflags & ~Movement::MoveSplineFlag::Mask_No_Monster_Move);
+        if ( totaltime > 0 )
+                data << uint32(totaltime);
+        else
+        {
+                data << uint32(1);
+                sLog->outError("%s : totaltime = 0!\n",__PRETTY_FUNCTION__);
+        }
+        data << uint32((path.size()/3)-1);
+        if ( !catmull_rom )
+        {
+                float midpointx = (path[0]+path[path.size()-3])*0.5;
+                float midpointy = (path[1]+path[path.size()-2])*0.5;
+                float midpointz = (path[2]+path[path.size()-1])*0.5;
+                for ( int i = 1; i < path.size()/3; i++)
+                {
+                        if ( i == 1 )
+                        {
+                                data << path[path.size()-3]<< path[path.size()-2] << path[path.size()-1];
+                        }else{
+                                data.appendPackXYZ(midpointx-path[i*3+0],midpointy-path[i*3+1],midpointz-path[i*3+2]);
+                        }
+                }
+        }else{
+                for ( int i = 1; i < path.size()/3; i++)
+                {
+                        sLog->outDebug(LOG_FILTER_MAPS,"WPMM: %f %f %f",path[i*3], path[i*3+1], path[i*3+2]);
+                        data << path[i*3]<< path[i*3+1] << path[i*3+2];
+
+                }
+
+        }
+
+        SendMessageToSet(&data, true);
+
+        AddUnitState(UNIT_STATE_MOVE);
+}
+
 
 bool Unit::haveOffhandWeapon() const
 {
@@ -2980,6 +3080,12 @@ bool Unit::isInAccessiblePlaceFor(Creature const* c) const
 
 bool Unit::IsInWater() const
 {
+    if ( ! Trinity::IsValidMapCoord(GetPositionX(),GetPositionY(), GetPositionZ()) )
+    {
+            sLog->outError("Unit::IsInWater() NPC '%s' ( GUID %llu ): Coordinate non valide.",GetName(),GetGUID());
+            return false;
+    }
+
     return GetBaseMap()->IsInWater(GetPositionX(), GetPositionY(), GetPositionZ());
 }
 

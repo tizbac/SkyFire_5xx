@@ -27,6 +27,8 @@
 #include "LootMgr.h"
 #include "DatabaseEnv.h"
 #include "Cell.h"
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 #include <list>
 

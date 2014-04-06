@@ -35,6 +35,8 @@
 #include <map>
 #include <set>
 #include <list>
+#include <boost/thread.hpp>
+#include <boost/bind.hpp>
 
 class Object;
 class WorldPacket;
@@ -96,6 +98,7 @@ enum WorldBoolConfigs
 {
     CONFIG_DURABILITY_LOSS_IN_PVP = 0,
     CONFIG_ADDON_CHANNEL,
+    CONFIG_PATHFINDING_ENABLED,
     CONFIG_ALLOW_PLAYER_COMMANDS,
     CONFIG_CLEAN_CHARACTER_DB,
     CONFIG_GRID_UNLOAD,
@@ -190,12 +193,14 @@ enum WorldFloatConfigs
     CONFIG_STATS_LIMITS_PARRY,
     CONFIG_STATS_LIMITS_BLOCK,
     CONFIG_STATS_LIMITS_CRIT,
+    CONFIG_PATHFINDING_STEPSIZE,
     FLOAT_CONFIG_VALUE_COUNT
 };
 
 enum WorldIntConfigs
 {
     CONFIG_COMPRESSION = 0,
+    CONFIG_PATHFINDING_THREADS,
     CONFIG_INTERVAL_SAVE,
     CONFIG_INTERVAL_GRIDCLEAN,
     CONFIG_INTERVAL_MAPUPDATE,
@@ -356,6 +361,8 @@ enum WorldIntConfigs
     CONFIG_BG_REWARD_LOSER_HONOR_LAST,
     CONFIG_BG_REWARD_WINNER_CONQUEST_FIRST,
     CONFIG_BG_REWARD_WINNER_CONQUEST_LAST,
+    CONFIG_PATHFINDING_MAX_WAYPOINTS,
+    CONFIG_PATHFINDING_MAX_PATH_SIZE,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -574,7 +581,13 @@ class World
         inline void DecreasePlayerCount() { m_PlayerCount--; }
 
         Player* FindPlayerInZone(uint32 zone);
-
+        
+        //Pathfinding
+        boost::mutex configlock;
+        bool destroying;
+        std::vector<boost::thread*> pfthreads;
+        //-----
+        
         /// Deny clients?
         bool IsClosed() const;
 
@@ -673,10 +686,17 @@ class World
         /// Set a server configuration element (see #WorldConfigs)
         void setBoolConfig(WorldBoolConfigs index, bool value)
         {
+            boost::mutex::scoped_lock lock(configlock);
             if (index < BOOL_CONFIG_VALUE_COUNT)
                 m_bool_configs[index] = value;
         }
-
+        
+        bool getBoolConfigMT(WorldBoolConfigs index) 
+        {
+            boost::mutex::scoped_lock lock(configlock);
+            return index < BOOL_CONFIG_VALUE_COUNT ? m_bool_configs[index] : 0;
+        }
+        
         /// Get a server configuration element (see #WorldConfigs)
         bool getBoolConfig(WorldBoolConfigs index) const
         {
@@ -686,6 +706,7 @@ class World
         /// Set a server configuration element (see #WorldConfigs)
         void setFloatConfig(WorldFloatConfigs index, float value)
         {
+            boost::mutex::scoped_lock lock(configlock);
             if (index < FLOAT_CONFIG_VALUE_COUNT)
                 m_float_configs[index] = value;
         }
@@ -695,10 +716,16 @@ class World
         {
             return index < FLOAT_CONFIG_VALUE_COUNT ? m_float_configs[index] : 0;
         }
+        float getFloatConfigMT(WorldFloatConfigs index) 
+        {
+            boost::mutex::scoped_lock lock(configlock);
+            return index < FLOAT_CONFIG_VALUE_COUNT ? m_float_configs[index] : 0;
+        }
 
         /// Set a server configuration element (see #WorldConfigs)
         void setIntConfig(WorldIntConfigs index, uint32 value)
         {
+            boost::mutex::scoped_lock lock(configlock);
             if (index < INT_CONFIG_VALUE_COUNT)
                 m_int_configs[index] = value;
         }
@@ -708,6 +735,12 @@ class World
         {
             return index < INT_CONFIG_VALUE_COUNT ? m_int_configs[index] : 0;
         }
+        uint32 getIntConfigMT(WorldIntConfigs index)
+        {
+            boost::mutex::scoped_lock lock(configlock);
+            return index < INT_CONFIG_VALUE_COUNT ? m_int_configs[index] : 0;
+        }
+
 
         void setWorldState(uint32 index, uint64 value);
         uint64 getWorldState(uint32 index) const;

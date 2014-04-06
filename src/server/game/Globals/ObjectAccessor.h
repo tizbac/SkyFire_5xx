@@ -31,6 +31,13 @@
 #include "Object.h"
 
 #include <set>
+namespace boost{
+    class thread;
+    class mutex;
+    namespace asio{
+        class io_service;
+    }
+}
 
 class Creature;
 class Corpse;
@@ -109,7 +116,7 @@ class ObjectAccessor
 
             return (Unit*)GetObjectInOrOutOfWorld(guid, (Creature*)NULL);
         }
-
+        boost::mutex deletelock;
         // returns object if is in world
         template<class T> static T* GetObjectInWorld(uint64 guid, T* /*typeSpecifier*/)
         {

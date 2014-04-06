@@ -203,6 +203,7 @@ void Creature::RemoveFromWorld()
         if (m_formation)
             sFormationMgr->RemoveCreatureFromGroup(m_formation, this);
         Unit::RemoveFromWorld();
+        boost::mutex::scoped_lock lock(sObjectAccessor->deletelock);//Impedisce di rimuovere la creature mentre è in corso l'update della posizione sul thread di pathfinding
         sObjectAccessor->RemoveObject(this);
     }
 }
