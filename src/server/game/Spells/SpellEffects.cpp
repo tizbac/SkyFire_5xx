@@ -4604,16 +4604,23 @@ void Spell::EffectCharge(SpellEffIndex /*effIndex*/)
 
     if (effectHandleMode == SPELL_EFFECT_HANDLE_LAUNCH_TARGET)
     {
-        // Spell is not using explicit target - no generated path
-        if (m_preGeneratedPath.GetPathType() == PATHFIND_BLANK)
+        Position pos;
+        unitTarget->GetContactPoint(m_caster, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+    
+        if ( !sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ) )
         {
-            Position pos;
-            unitTarget->GetContactPoint(m_caster, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
-            unitTarget->GetFirstCollisionPosition(pos, unitTarget->GetObjectSize(), unitTarget->GetRelativeAngle(m_caster));
-            m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+            // Spell is not using explicit target - no generated path
+            if (m_preGeneratedPath.GetPathType() == PATHFIND_BLANK)
+            {
+                unitTarget->GetFirstCollisionPosition(pos, unitTarget->GetObjectSize(), unitTarget->GetRelativeAngle(m_caster));
+                m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+            }
+            else
+                m_caster->GetMotionMaster()->MoveCharge(m_preGeneratedPath);
+
         }
         else
-            m_caster->GetMotionMaster()->MoveCharge(m_preGeneratedPath);
+             m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ + 1.0f);
     }
 
     if (effectHandleMode == SPELL_EFFECT_HANDLE_HIT_TARGET)
@@ -4635,7 +4642,8 @@ void Spell::EffectChargeDest(SpellEffIndex /*effIndex*/)
         destTarget->GetPosition(&pos);
         float angle = m_caster->GetRelativeAngle(pos.GetPositionX(), pos.GetPositionY());
         float dist = m_caster->GetDistance(pos);
-        m_caster->GetFirstCollisionPosition(pos, dist, angle);
+        if (!sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ))
+            m_caster->GetFirstCollisionPosition(pos, dist, angle);
 
         m_caster->GetMotionMaster()->MoveCharge(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
     }

@@ -1,14 +1,20 @@
 #include "Pathfinding.h"
 #include "pathfinding/InputGeom.h"
-#include "pathfinding/Recast/Recast.h"
-#include "pathfinding/Detour/DetourNavMesh.h"
-#include "pathfinding/Detour/DetourNavMeshBuilder.h"
-#include "pathfinding/Detour/DetourNavMeshQuery.h"
-#include "pathfinding/Detour/DetourCommon.h"
+#include "Recast.h"
+#include "DetourNavMesh.h"
+#include "DetourNavMeshBuilder.h"
+#include "DetourNavMeshQuery.h"
+#include "DetourCommon.h"
 #include "ObjectAccessor.h"
 #include <math.h>
 #include <valarray>
 #include <sys/times.h>
+#include <float.h>
+#include "Player.h"
+#include "Creature.h"
+#include "TemporarySummon.h"
+
+bool isUnitOnGround(Unit * u);
 
 uint32 maphashcount;
 std::map<Map*,uint32> loadedmaps;
@@ -50,7 +56,8 @@ void Map::LoadNavMesh(int gx, int gy)
         bytesread = fread(&params, sizeof(dtNavMeshParams), 1, file);
         if ( bytesread < 1 )
         {
-            sLog->outError("%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread*sizeof(dtNavMeshParams),sizeof(dtNavMeshParams));
+            sLog->outError(LOG_FILTER_GENERAL, "%d:Short read while loading '%s' got %u bytes, expected %u",__LINE__,fileName,uint32(bytesread*sizeof(dtNavMeshParams)), uint32(sizeof(dtNavMeshParams)));
+            fclose(file);
             return;
             
         }
@@ -67,7 +74,7 @@ void Map::LoadNavMesh(int gx, int gy)
         {
             delete m_navMesh;
             m_navMesh = 0;
-            sLog->outError("Error: Failed to initialize mmap %03u from file %s", i_id, fileName);
+            sLog->outError(LOG_FILTER_GENERAL, "Error: Failed to initialize mmap %03u from file %s", i_id, fileName);
             return;
         }
     }
@@ -99,7 +106,7 @@ void Map::LoadNavMesh(int gx, int gy)
     bytesread = fread(data, length, 1, file);
     if ( bytesread < 1 )
     {
-        sLog->outError("%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread*length,length);
+        sLog->outError(LOG_FILTER_GENERAL, "%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,int32(bytesread*length), length);
         return;
     }
     fclose(file);
@@ -107,13 +114,13 @@ void Map::LoadNavMesh(int gx, int gy)
     dtMeshHeader* header = (dtMeshHeader*)data;
     if (header->magic != DT_NAVMESH_MAGIC)
     {
-        sLog->outError("Error: %03u%02i%02i.mmtile has an invalid header", i_id, gx, gy);
+        sLog->outError(LOG_FILTER_GENERAL, "Error: %03u%02i%02i.mmtile has an invalid header", i_id, gx, gy);
         dtFree(data);
         return;
     }
     if (header->version != DT_NAVMESH_VERSION)
     {
-        sLog->outError("Error: %03u%02i%02i.mmtile was built with Detour v%i, expected v%i",
+        sLog->outError(LOG_FILTER_GENERAL, "Error: %03u%02i%02i.mmtile was built with Detour v%i, expected v%i",
                               i_id, gx, gy,                 header->version, DT_NAVMESH_VERSION);
         dtFree(data);
         return;
@@ -121,7 +128,7 @@ void Map::LoadNavMesh(int gx, int gy)
 
     if(!m_navMesh->addTile(data, length, DT_TILE_FREE_DATA,0,NULL))
     {
-        sLog->outError("Error: could not load %03u%02i%02i.mmtile into navmesh (InstanceId: %d)", i_id, gx, gy,GetInstanceId());
+        sLog->outError(LOG_FILTER_GENERAL, "Error: could not load %03u%02i%02i.mmtile into navmesh (InstanceId: %d)", i_id, gx, gy,GetInstanceId());
         dtFree(data);
         return;
     }
@@ -167,20 +174,124 @@ float Interpolate(float x1,float x2,float frac)
 
     return rx;
 }
-void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, uint32 time,uint32 id)
+inline double IntersectSphere_t0(double sx,double sy,double sz,double DX,double DY,double DZ, double cx, double cy,double cz, double r)
+{
+    
+    double delta = -(DX*DX)*(cy*cy)-(DY*DY)*(cx*cx)-(DX*DX)*(cz*cz)
+    -(DZ*DZ)*(cx*cx)-(DY*DY)*(cz*cz)-(DZ*DZ)*(cy*cy)+(DX*DX)*(r*r)+(DY*DY)*(r*r)+(DZ*DZ)*(r*r)-
+    (DX*DX)*(sy*sy)-(DY*DY)*(sx*sx)-(DX*DX)*(sz*sz)-(DZ*DZ)*(sx*sx)-(DY*DY)*(sz*sz)-(DZ*DZ)*(sy*sy)+
+    (DY*DY)*cx*sx*2.0+(DX*DX)*cy*sy*2.0+(DZ*DZ)*cx*sx*2.0+(DX*DX)*cz*sz*2.0+(DZ*DZ)*cy*sy*2.0+
+    (DY*DY)*cz*sz*2.0+DX*DY*cx*cy*2.0+DX*DZ*cx*cz*2.0+DY*DZ*cy*cz*2.0-DX*DY*cx*sy*2.0-
+    DX*DY*cy*sx*2.0-DX*DZ*cx*sz*2.0-DX*DZ*cz*sx*2.0-DY*DZ*cy*sz*2.0-DY*DZ*cz*sy*2.0+DX*DY*sx*sy*2.0+
+    DX*DZ*sx*sz*2.0+DY*DZ*sy*sz*2.0;
+    if ( delta < 0.0f )
+        return G3D::nan();
+    double t0 = -(-DX*cx-DY*cy-DZ*cz+DX*sx+DY*sy+DZ*sz+sqrt(delta))/(DX*DX+DY*DY+DZ*DZ);
+    return t0;
+}
+inline double IntersectSphere_t1(double sx,double sy,double sz,double DX,double DY,double DZ, double cx, double cy,double cz, double r)
+{
+    double delta = -(DX*DX)*(cy*cy)-(DY*DY)*(cx*cx)-(DX*DX)*(cz*cz)-(DZ*DZ)*(cx*cx)
+    -(DY*DY)*(cz*cz)-(DZ*DZ)*(cy*cy)+(DX*DX)*(r*r)+(DY*DY)*(r*r)+(DZ*DZ)*(r*r)-(DX*DX)*(sy*sy)-(DY*DY)*(sx*sx)
+    -(DX*DX)*(sz*sz)-(DZ*DZ)*(sx*sx)-(DY*DY)*(sz*sz)-(DZ*DZ)*(sy*sy)+(DY*DY)*cx*sx*2.0+(DX*DX)*cy*sy*2.0+(DZ*DZ)*cx*sx*2.0
+    +(DX*DX)*cz*sz*2.0+(DZ*DZ)*cy*sy*2.0+(DY*DY)*cz*sz*2.0+DX*DY*cx*cy*2.0+DX*DZ*cx*cz*2.0+DY*DZ*cy*cz*2.0-DX*DY*cx*sy*2.0
+    -DX*DY*cy*sx*2.0-DX*DZ*cx*sz*2.0-DX*DZ*cz*sx*2.0-DY*DZ*cy*sz*2.0-DY*DZ*cz*sy*2.0+DX*DY*sx*sy*2.0+DX*DZ*sx*sz*2.0+DY*DZ*sy*sz*2.0;
+    if ( delta < 0.0f )
+        return G3D::nan();
+    double t1 = (DX*cx+DY*cy+DZ*cz-DX*sx-DY*sy-DZ*sz+sqrt(delta))/(DX*DX+DY*DY+DZ*DZ);
+    return t1;
+}
+bool NewContactPoint( TrinityVector3<double> target , float radius , std::vector<float>& path , TrinityVector3<double>* last_point)
+{
+    TrinityVector3<double> startpoint;
+    TrinityVector3<double> endpoint;
+    TrinityVector3<double> direction;
+    TrinityVector3<double> intersection;
+    
+    TrinityVector3<double> reference;
+//     std::stringstream ss;
+    
+    for ( int i = 0; i < path.size()/3-1; i++ )
+    {
+        startpoint.x = path[i*3+0];startpoint.y = path[i*3+1];startpoint.z = path[i*3+2];
+        if ( i == 0 )
+        {
+            reference = startpoint;
+//             ss << "plot(plot::Circle2d(" << radius << ",[" << (target-reference).x << "," << (target-reference).y << "]),"; 
+        }
+        endpoint.x = path[(i+1)*3+0]; endpoint.y = path[(i+1)*3+1]; endpoint.z = path[(i+1)*3+2];
+        
+        direction = endpoint-startpoint; // t andrà da 0 a 1
+//         ss << "plot::Curve2d([" << (startpoint-reference).x << "+" << direction.x << "*t," << (startpoint-reference).y << "+" << direction.y << "*t],t=0..1),";
+        
+        float t0 = IntersectSphere_t0(startpoint.x,startpoint.y,startpoint.z,
+                                      direction.x,direction.y,direction.z,
+                                      target.x,target.y,target.z,radius
+        );
+        float t1 = IntersectSphere_t1(startpoint.x,startpoint.y,startpoint.z,
+                                      direction.x,direction.y,direction.z,
+                                      target.x,target.y,target.z,radius
+        );
+        if ( !isnan(t0) && t0 >= 0.0f && t0 <= 1.0f )
+        {
+            intersection = startpoint+direction*t0;
+//             printf("Intersezione(target = %s ) t0 da %s a %s , collisione in %s con sfera di raggio %f , terminazione del percorso\n",target.as_str().c_str(),startpoint.as_str().c_str(),
+//                            endpoint.as_str().c_str(),intersection.as_str().c_str(),radius
+//             );
+            //Sostituisce il prossimo waypoint con intersection
+            path[(i+1)*3+0] = intersection.x;
+            path[(i+1)*3+1] = intersection.y;
+            path[(i+1)*3+2] = intersection.z;
+            //Tronca il percorso
+            path.resize((i+1)*3+3);
+            *last_point = intersection;
+//             ss << "[" << (intersection-reference).x << "," << (intersection-reference).y << "," << (intersection-reference).z << "])";
+//             std::cout << ss.str() << std::endl;
+            return true;
+        }
+        if ( !isnan(t1) && t1 >= 0.0f && t1 <= 1.0f )
+        {
+            intersection = startpoint+direction*t1;
+//             printf("Intersezione(target = %s ) t1 da %s a %s , collisione in %s con sfera di raggio %f , terminazione del percorso\n",target.as_str().c_str(),startpoint.as_str().c_str(),
+//                            endpoint.as_str().c_str(),intersection.as_str().c_str(),radius
+//             );
+            //Sostituisce il prossimo waypoint con intersection
+            path[(i+1)*3+0] = intersection.x;
+            path[(i+1)*3+1] = intersection.y;
+            path[(i+1)*3+2] = intersection.z;
+            //Tronca il percorso
+            path.resize((i+1)*3+3);
+            *last_point = intersection;
+//             ss << "[" << (intersection-reference).x << "," << (intersection-reference).y << "," << (intersection-reference).z << "])";
+//             std::cout << ss.str() << std::endl;
+            return true;
+        }
+//         printf("Nessuna Intersezione(target = %s ) t1 da %s a %s , con sfera di raggio %f , terminazione del percorso\n",target.as_str().c_str(),startpoint.as_str().c_str(),
+//                            endpoint.as_str().c_str(),radius
+//             );
+    }
+//     ss << ")";
+//     std::cout << ss.str() << std::endl;
+    return false;
+    
+}
+
+
+///Queste funzioni sono utilizzate sul thread del world per eseguire le azioni messe in coda dal pathfinding
+void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, uint32 time,uint32 id, uint64 facingTarget)
 {
     Unit * u;
     u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
     if (!u)
     {
-        sLog->outError("SendMonsterMoveGUID: GUID %llu non valida.",guid);
+        sLog->outError(LOG_FILTER_GENERAL, "SendMonsterMoveGUID: GUID " UI64FMTD " non valida.",guid);
 
         return;
     }
     //sLog->outError("SendMonsterMoveGUID");
     bool fly;
     fly = ( u->GetUnitMovementFlags() & MOVEMENTFLAG_DISABLE_GRAVITY ) != 0;
-    u->SendMonsterMove(path,time,id,true,fly);
+    u->SendMonsterMove(path,time,id,true,fly, facingTarget);
 
 }
 void PathFindingMgr::CreatureRelocateGUID(uint64 guid, float x, float y, float z)
@@ -189,7 +300,7 @@ void PathFindingMgr::CreatureRelocateGUID(uint64 guid, float x, float y, float z
     c = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
     if (!c)
     {
-        sLog->outError("CreatureRelocateGUID: GUID %llu non valida.",guid);
+        sLog->outError(LOG_FILTER_GENERAL, "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
         return;
     }
     c->UpdatePosition(x,y,z,c->GetOrientation());
@@ -197,7 +308,7 @@ void PathFindingMgr::CreatureRelocateGUID(uint64 guid, float x, float y, float z
 }
 void PathFindingMgr::PlayerRelocateGUID(uint64 guid, float x, float y, float z)
 {
-    Player * p;
+    Player* p;
     p = ObjectAccessor::GetObjectInWorld(guid,(Player*)NULL);
     if (!p)
         return;
@@ -221,7 +332,7 @@ void UnitStopMoving(uint64 guid)
         u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
         if (!u)
         {
-            sLog->outError("UnitStopMoving: GUID %llu non valida.",guid);
+            sLog->outError(LOG_FILTER_GENERAL, "UnitStopMoving: GUID " UI64FMTD " non valida.",guid);
         }
         u->StopMoving();
 
@@ -238,7 +349,7 @@ void UnitRelocateGUID(uint64 guid, float x, float y, float z)
         c = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
         if (!c)
         {
-            sLog->outError("CreatureRelocateGUID: GUID %llu non valida.",guid);
+            sLog->outError(LOG_FILTER_GENERAL, "CreatureRelocateGUID: GUID " UI64FMTD " non valida.",guid);
             return;
         }
         c->UpdatePosition(x,y,z,c->GetOrientation());
@@ -247,6 +358,12 @@ void UnitRelocateGUID(uint64 guid, float x, float y, float z)
     }
     //c->Relocate(x,y,z);
 }
+
+///--------------
+
+
+
+
 void UpdateMapPathfinding(Map * m,uint32 timediff)
 {
     PathFindingMgr * pMgr = m->GetPathFindingMgr();
@@ -330,7 +447,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
         }
         if ( u->GetMap() != m)//non dovrebbe mai succedere in teoria
         {
-            sLog->outError("Unit '%s' guid %llu : Pathfindingthread: La mappa della Unit non corrisponde al thread , rimozione ",u->GetName(),u->GetGUID());
+            sLog->outError(LOG_FILTER_GENERAL, "Unit '%s' guid " UI64FMTD " : Pathfindingthread: La mappa della Unit non corrisponde al thread , rimozione ",u->GetName().c_str(),u->GetGUID());
             boost::mutex::scoped_lock lock(pMgr->listsmutex);
             pMgr->removelist.push_back(pfstate);
             sObjectAccessor->deletelock.unlock();
@@ -339,29 +456,69 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
         }
         boost::mutex::scoped_lock dllock(u->deletelock);
         sObjectAccessor->deletelock.unlock();
-
+        
+        if ( pfstate->unittypeid == TYPEID_UNIT )
+        {
+            if ( GetMSTimeDiffToNow(pfstate->lastCheck) > 200)
+            {
+                bool fly = !isUnitOnGround(u);
+                //printf("%s flying: %s\n",u->GetName(),fly ? "yes" : "no");
+                Creature * c = u->ToCreature();
+                if ( c && c->GetCreatureTemplate()->InhabitType & INHABIT_AIR)
+                {
+                    if ( fly && !pfstate->isflying )
+                    {
+                        u->AddUnitMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_CAN_FLY );
+                    }
+                    if ( !fly && pfstate->isflying )
+                    {
+                        u->RemoveUnitMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_CAN_FLY );
+                    }
+                }else{//I mob non volanti non possono volare
+                    u->RemoveUnitMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_CAN_FLY );
+                }
+                pfstate->isflying = fly;
+                pfstate->lastCheck = getMSTime();
+                
+                
+                //CHECK LOS
+                if ( !isnan( pfstate->chasetargetposition.x) && pfstate->GetPositionNow().dist(pfstate->chasetargetposition) < (u->GetMeleeReach()+pfstate->targetmeleerange)*1.1 )
+                {
+                    TrinityVector3<float> coll_point;
+                    
+                    bool isobs = !m->NavMeshLOS(pfstate->chasetargetposition.x,pfstate->chasetargetposition.y,pfstate->chasetargetposition.z,pfstate->destx,pfstate->desty,pfstate->destz,&coll_point);
+                    if ( isobs )
+                    {
+                        pfstate->UpdateDestination(coll_point.x,coll_point.y,coll_point.z,u->GetUnitMovementFlags(),false);
+                    }
+                }
+                
+            }
+        }
 
         if ( (! pfstate->calculated) || ( pfstate->mustrecalculate ) )
         {
-            //sLog->outDebug(LOG_FILTER_MAPS, "Percorso non calcolato oppure ricalcolazione necessaria, calcolo...");
+            sLog->outDebug(LOG_FILTER_MAPS, "<%s>Percorso non calcolato oppure ricalcolazione necessaria, calcolo...",u->GetName().c_str());
             pfstate->Calculate(m,u);
             if ( pfstate->path.size() > 3 && !pfstate->pause && pfstate->status != PATHFINDINGSTATUS_DEST_UNREACHABLE )//Invia il percorso solo se valido
-                m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id));
+                m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id, pfstate->facingTarget));
+            else
+                sLog->outDebug(LOG_FILTER_MAPS, "<%s>Percorso calcolato non valido %u %d %u",u->GetName().c_str(),uint32(pfstate->path.size()),pfstate->pause,pfstate->status);
             pfstate->mustrecalculate = false;
         }
         if ( pfstate->pause || pfstate->arrived || pfstate->status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
         {
             /*if ( ! sqrt((pfstate->lastx-pfstate->destx)*(pfstate->lastx-pfstate->destx)+(pfstate->lasty-pfstate->desty)*(pfstate->lasty-pfstate->desty)+(pfstate->lastz-pfstate->destz)*(pfstate->lastz-pfstate->destz)) < 0.03 )
               pfstate->arrived = false;*/
-            //sLog->outDebug(LOG_FILTER_MAPS, "IN PAUSA O ARRIVATO");
+           // sLog->outDebug(LOG_FILTER_MAPS, "<%s> IN PAUSA O ARRIVATO",u->GetName());
             continue;
         }
 
-        if ( pfstate->currwp >= pfstate->wpcount )
+        if ( pfstate->currwp >= pfstate->wpcount-1 )
         {
             if ( pfstate->status == PATHFINDINGSTATUS_FINAL )
             {
-                //sLog->outDebug(LOG_FILTER_MAPS, "Arrivato.");
+                sLog->outDebug(LOG_FILTER_MAPS, "<%s> Arrivato (%f %f %f).",u->GetName().c_str(),pfstate->lastx,pfstate->lasty,pfstate->lastz);
 
                 pfstate->arrived = true;
                 pfstate->lastx = pfstate->destx;
@@ -374,18 +531,18 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
                 continue;
             } else if ( pfstate->status == PATHFINDINGSTATUS_PARTIAL ) {
-                sLog->outDebug(LOG_FILTER_MAPS, "Calcolo nuova parte di percorso");
+                sLog->outDebug(LOG_FILTER_MAPS, "<%s> Calcolo nuova parte di percorso",u->GetName().c_str());
 
                 pfstate->Calculate(m,u);
                 if ( pfstate->path.size() > 3 )
-                    m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id));
+                    m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id, pfstate->facingTarget));
 
             }
             continue;
 
 
         }
-        if ( pfstate->currwp >= pfstate->wpcount )
+        if ( pfstate->currwp >= pfstate->wpcount-1 )
             continue;
         if ( pfstate->status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
             continue;
@@ -419,7 +576,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 // //
                 if ( pfstate->currtime - pfstate->lastposupdate > 100)
                 {
-                    TrinityVector3 currpos = pfstate->GetPositionNow();
+                    TrinityVector3<float> currpos = pfstate->GetPositionNow();
                     m->mtcalls->post(boost::bind(&PathFindingMgr::PlayerRelocateGUID,pMgr,p->GetGUID(),currpos.x,currpos.y,currpos.z));
                     pfstate->lastposupdate = pfstate->currtime;
                     pfstate->lastx = currpos.x;
@@ -435,6 +592,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
             }
             if ( pfstate->unittypeid == TYPEID_UNIT )
             {
+                
                 //sLog->outDebug(LOG_FILTER_MAPS, "CurrTime: %d waypointtime[%d] = %d, arrived = %s",pfstate->currtime,pfstate->currwp,pfstate->waypointtime[pfstate->currwp],pfstate->arrived ? "true" : "false");
                 if ( pfstate->currtime >= pfstate->waypointtime[pfstate->currwp+1] )
                 {
@@ -457,7 +615,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
                 if ( pfstate->currtime - pfstate->lastposupdate > 100)
                 {
-                    TrinityVector3 currpos = pfstate->GetPositionNow();
+                    TrinityVector3<float> currpos = pfstate->GetPositionNow();
                     m->mtcalls->post(boost::bind(&PathFindingMgr::CreatureRelocateGUID,pMgr,u->GetGUID(),currpos.x,currpos.y,currpos.z));
                     pfstate->lastposupdate = pfstate->currtime;
                     pfstate->lastx = currpos.x;
@@ -512,7 +670,7 @@ void PathFindingState::Pause()//Queste tre funziono vnano chiamate solo dal thre
         statelock.lock();
         if ( calculated )
         {
-            TrinityVector3 pos = GetPositionNow();
+            TrinityVector3<float> pos = GetPositionNow();
 
 
             Map * m = u->GetMap();
@@ -548,7 +706,7 @@ bool PathFindingState::HasArrived()
     if ( path.size() == 0 )
     {
 
-        if (u && TrinityVector3(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ()).dist(TrinityVector3(destx,desty,destz)) <0.05 )
+        if (u && TrinityVector3<float>(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ()).dist(TrinityVector3<float>(destx,desty,destz)) <0.05 )
             return true;
         else
             return false;
@@ -556,9 +714,9 @@ bool PathFindingState::HasArrived()
 
     if ( u )
     {
-        return currwp == wpcount || TrinityVector3(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ())==TrinityVector3(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
+        return currwp == wpcount-1 || TrinityVector3<float>(u->GetPositionX(),u->GetPositionY(),u->GetPositionZ())==TrinityVector3<float>(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
     } else {
-        return currwp == wpcount;
+        return currwp == wpcount-1;
     }
 
 }
@@ -573,14 +731,15 @@ void PathFindingState::UnPause()
     pause = false;
     statelock.unlock();
 }
-void PathFindingState::UpdateDestination(float destx, float desty, float destz, uint32 movementflags )
+void PathFindingState::UpdateDestination(float destx, float desty, float destz, uint32 movementflags, bool fromWorldThread )
 {
 //  sLog->outString("%s : (%f,%f,%f,%X);\n",__PRETTY_FUNCTION__,destx,desty,destz,movementflags);
     Unit * u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
     if ( u )
     {
-        statelock.lock();
-        TrinityVector3 pos = GetPositionNow();
+        if ( fromWorldThread )
+            statelock.lock();
+        TrinityVector3<float> pos = GetPositionNow();
         lastx = pos.x;
         lasty = pos.y;
         lastz = pos.z;
@@ -588,15 +747,19 @@ void PathFindingState::UpdateDestination(float destx, float desty, float destz, 
         this->destx = destx;
         this->desty = desty;
         this->destz = destz;
+        if ( lastx == destx && lasty == desty && lastz == destz )
+            sLog->outDebug(LOG_FILTER_GENERAL, "PF: Warning: attempt to update destination to current position!");
+        
         mustrecalculate = true;
-        statelock.unlock();
+        if ( fromWorldThread )
+            statelock.unlock();
     }
 }
 
 /*!
 Questa funzione consente di ottenere la posizione in qualsiasi momento
 */
-TrinityVector3 PathFindingState::GetPositionNow() //WARNING: Deve essere chiamata con un lock su statelock se non è dal thread di pathfinding
+TrinityVector3<float> PathFindingState::GetPositionNow() //WARNING: Deve essere chiamata con un lock su statelock se non è dal thread di pathfinding
 {
     if ( path.size() > 0 && currwp+1 < path.size()/3 )
     {
@@ -606,21 +769,21 @@ TrinityVector3 PathFindingState::GetPositionNow() //WARNING: Deve essere chiamat
         float yi = Interpolate(path[(currwp)*3+1],path[(currwp+1)*3+1],float(currtime-waypointtime[currwp])/float(waypointtime[currwp+1]-waypointtime[currwp]));
         float zi = Interpolate(path[(currwp)*3+2],path[(currwp+1)*3+2],float(currtime-waypointtime[currwp])/float(waypointtime[currwp+1]-waypointtime[currwp]));
         //printf("GetPositionNow(path.size()=%d,waypointtime[currwp]=%d,currwp=%d,waypointx=%f,y=%f,z=%f): %f %f %f\n",path.size(),waypointtime[currwp],currwp,path[(currwp)*3+0],path[(currwp)*3+1],path[(currwp)*3+2],xi,yi,zi);
-        return TrinityVector3(xi,yi,zi);
+        return TrinityVector3<float>(xi,yi,zi);
         /*}else{
           float xi = Interpolate(path[(currwp)*3+0],destx,float(currtime)/float(waypointtime[currwp]));
           float yi = Interpolate(path[(currwp)*3+1],desty,float(currtime)/float(waypointtime[currwp]));
           float zi = Interpolate(path[(currwp)*3+2],destz,float(currtime)/float(waypointtime[currwp]));
           printf("GetPositionNow(): %f %f %f\n",xi,yi,zi);
-          return TrinityVector3(xi,yi,zi);
+          return TrinityVector3<float>(xi,yi,zi);
         }*/
     } else { //L'ultimo waypoint sarà sempre la destinazione
 // printf("GetPositionNow(): %f %f %f\n",lastx,lasty,lastz);
 
         if ( path.size() < 3 )
-            return TrinityVector3(destx,desty,destz);
+            return TrinityVector3<float>(destx,desty,destz);
         else
-            return TrinityVector3(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
+            return TrinityVector3<float>(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
     }
 }
 
@@ -647,6 +810,26 @@ TrinityVector3 PathFindingState::GetPositionNow() //WARNING: Deve essere chiamat
   }
   return NULL;
 }*/
+
+void PathFindingState::UpdateChaseTargetPosition(float x, float y, float z,float mr /* melee range*/)
+{
+    statelock.lock();
+    chasetargetposition.x = x;
+    chasetargetposition.y = y;
+    chasetargetposition.z = z;
+    targetmeleerange = mr;
+    statelock.unlock();
+}
+
+void PathFindingState::UpdatePetOwnerPosition(float x, float y, float z)
+{
+    statelock.lock();
+    petownerposition.x = x;
+    petownerposition.y = y;
+    petownerposition.z = z;
+    statelock.unlock();
+}
+
 
 PathFindingState::~PathFindingState()
 {
@@ -677,7 +860,7 @@ void PathFindingMgr::RemovePathfind(PathFindingState * pf)
         st->willdelete = true;
     sLog->outDebug(LOG_FILTER_MAPS, "PathFindingMgr::RemovePathfind(%p)",pf);
 }
-/*std::vector<float> SubdividePath(TrinityVector3 startpoint,std::vector<float> origpath,Map * map, float stepsize)
+/*std::vector<float> SubdividePath(TrinityVector3<float> startpoint,std::vector<float> origpath,Map * map, float stepsize)
 {
 
   std::vector<float> newpath;
@@ -686,9 +869,9 @@ void PathFindingMgr::RemovePathfind(PathFindingState * pf)
     float dist;
     if ( i == 0 )
     {
-      dist = startpoint.dist(TrinityVector3(origpath[i*3+0],origpath[i*3+1],origpath[i*3+2]));
+      dist = startpoint.dist(TrinityVector3<float>(origpath[i*3+0],origpath[i*3+1],origpath[i*3+2]));
     }else{
-      dist = TrinityVector3(origpath[(i-1)*3+0],origpath[(i-1)*3+1],origpath[(i-1)*3+2]).dist(TrinityVector3(origpath[i*3+0],origpath[i*3+1],origpath[i*3+2]));
+      dist = TrinityVector3<float>(origpath[(i-1)*3+0],origpath[(i-1)*3+1],origpath[(i-1)*3+2]).dist(TrinityVector3<float>(origpath[i*3+0],origpath[i*3+1],origpath[i*3+2]));
       newpath.push_back(origpath[(i-1)*3+0]);
       newpath.push_back(origpath[(i-1)*3+1]);
       newpath.push_back(origpath[(i-1)*3+2]);
@@ -716,9 +899,9 @@ void PathFindingMgr::RemovePathfind(PathFindingState * pf)
 /*
 Questa funzione elimina i waypoint non necessari ( ad esempio in linea d'aria )
 */
-std::vector<float> SimplifyPath(std::vector<float> &origpath)
+std::vector<float> SimplifyPath(std::vector<float> &origpath,std::vector<float> &newpath)
 {
-    std::vector<float> newpath;
+    newpath.clear();
     if ( origpath.size() == 0 )
         return newpath;
     float dist1,dist2,ratio,delta;
@@ -735,17 +918,17 @@ std::vector<float> SimplifyPath(std::vector<float> &origpath)
             continue;
         }
 
-        TrinityVector3 vp0(GetX(origpath,i-1),GetY(origpath,i-1),GetZ(origpath,i-1));
-        TrinityVector3 vpcentrale(GetX(origpath,i),GetY(origpath,i),GetZ(origpath,i));
-        TrinityVector3 vp1(GetX(origpath,i+1),GetY(origpath,i+1),GetZ(origpath,i+1));
-        TrinityVector3 vDir = (vpcentrale-vp0).normalize();
+        TrinityVector3<float> vp0(GetX(origpath,i-1),GetY(origpath,i-1),GetZ(origpath,i-1));
+        TrinityVector3<float> vpcentrale(GetX(origpath,i),GetY(origpath,i),GetZ(origpath,i));
+        TrinityVector3<float> vp1(GetX(origpath,i+1),GetY(origpath,i+1),GetZ(origpath,i+1));
+        TrinityVector3<float> vDir = (vpcentrale-vp0).normalize();
         dist1 = vp0.dist(vpcentrale);
         dist2 = vp0.dist(vp1);
-        TrinityVector3 t = vp0+vDir*dist2; //Il terzo punto seguendo l'angolazione 3d descritta dai punti vp0 e vpcentrale
+        TrinityVector3<float> t = vp0+vDir*dist2; //Il terzo punto seguendo l'angolazione 3d descritta dai punti vp0 e vpcentrale
         delta = t.dist(vp1);
         if ( delta > 0.07 )
         {
-            sLog->outDebug(LOG_FILTER_MAPS, "WP %d : %f",newpath.size()/3,delta);
+            sLog->outDebug(LOG_FILTER_MAPS, "WP %u : %f",uint32(newpath.size()/3),delta);
             Append3(newpath,origpath,i)
         }
     }
@@ -754,7 +937,14 @@ std::vector<float> SimplifyPath(std::vector<float> &origpath)
         //sLog->outDebug(LOG_FILTER_MAPS, "SimplifyPath: WAYPOINT %d : %f %f %f",i,newpath[i*3+0],newpath[i*3+1],newpath[i*3+2]);
     }
     //sLog->outDebug(LOG_FILTER_MAPS, "SimplifyPath: origwaypoints: %d newwaypoints: %d\n",origpath.size()/3,newpath.size()/3);
-    return newpath;
+    std::vector<float> res;
+    if ( newpath.size() < 6 )
+        return res;
+    if ( newpath.size() < 9 )
+        return newpath;
+    res.resize(newpath.size()-3);
+    memcpy(&res[0],&newpath[3],res.size()*sizeof(float));//Remove first waypoint to avoid glitches
+    return res;
 
 
 }
@@ -772,12 +962,15 @@ void PathFindingState::Calculate(Map* m,Unit * u)
 
     if ( lastx == destx && lastz == destz && desty == lasty )
     {
+        
         path.resize(0);
+        path2send.clear();
         wpcount = 0;
         arrived = true;
         calculated = true;
         currtime = 0;
         currwp = 0;
+        sLog->outDebug(LOG_FILTER_MAPS,"<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
         return;
 
 
@@ -785,17 +978,19 @@ void PathFindingState::Calculate(Map* m,Unit * u)
     }
     bool lospath = false;
     pathfindResult res;
-    if ( u->GetUnitMovementFlags() & ( MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_FLYING ) )//I mob volanti non hanno pathfinding
+    std::vector<float> pathtemp;
+    path2send.clear();
+    if ( u->GetUnitMovementFlags() & ( MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY ) )//I mob volanti non hanno pathfinding
     {
         //sLog->outDebug(LOG_FILTER_MAPS, "\033[34mUnit %p flying\033[0m",u);
         wpcount = 2;
-        path.resize(6);
-        path[0] = lastx;
-        path[1] = lasty;
-        path[2] = lastz;
-        path[3] = destx;
-        path[4] = desty;
-        path[5] = destz;
+        pathtemp.resize(6);
+        pathtemp[0] = lastx;
+        pathtemp[1] = lasty;
+        pathtemp[2] = lastz;
+        pathtemp[3] = destx;
+        pathtemp[4] = desty;
+        pathtemp[5] = destz;
         currwp = 0;
 
         currtime = 0;
@@ -836,15 +1031,36 @@ void PathFindingState::Calculate(Map* m,Unit * u)
             petownerposition.x = NAN;
             res = m->Pathfind(this,lastx,lasty,lastz,destx,desty,destz,incflags,excflags,3.5f);
         }
-        std::vector<float> pathtemp;
         if ( res.path )
         {
             pathtemp.resize(res.waypointcount*3);
             memcpy(&pathtemp[0],res.path,res.waypointcount*3*sizeof(float));
             delete res.path;
         }
-
         wpcount = res.waypointcount;
+        if ( c = u->ToCreature() )
+        {
+            if ( c->GetCreatureTemplate()->InhabitType & INHABIT_AIR && (res.result == PATHFIND_CANT_FIND_END_NAVMESH || res.result == PATHFIND_CANT_FIND_START_NAVMESH) )
+            {
+                wpcount = 2;
+                pathtemp.resize(6);
+                pathtemp[0] = lastx;
+                pathtemp[1] = lasty;
+                pathtemp[2] = lastz;
+                pathtemp[3] = destx;
+                pathtemp[4] = desty;
+                pathtemp[5] = destz;
+                currwp = 0;
+
+                currtime = 0;
+                arrived = false;
+                calculated = true;
+                lastposupdate = 0;
+            }
+        }
+        
+        
+        
         if ( !pathtemp.size() )
         {
             //sLog->outError("Pathfinding failed. (Start: %f %f %f , Dest: %f %f %f) Died=%s",lastx,lasty,lastz,destx,desty,destz,u->isAlive() ? "false" : "true" );
@@ -859,7 +1075,20 @@ void PathFindingState::Calculate(Map* m,Unit * u)
             lospath = true;
         }
         origwpcount = pathtemp.size()/3;
-        path = SimplifyPath(pathtemp);
+        
+    }
+    path2send = SimplifyPath(pathtemp,path);
+    TrinityVector3<double> last_point;
+//     printf("Ischarge=%d\n",(int)isCharge);
+    if ( isCharge )
+    {
+        bool finished_path = NewContactPoint(TrinityVector3<double>(destx,desty,destz),MELEE_RANGE-0.05,path2send,&last_point);
+        if ( finished_path )
+        {
+            destx = last_point.x;
+            desty = last_point.y;
+            destz = last_point.z;
+        }
     }
     currwp = 0;
 
@@ -897,18 +1126,22 @@ void PathFindingState::Calculate(Map* m,Unit * u)
         status = PATHFINDINGSTATUS_PARTIAL;
     if ( origwpcount < MAX_SMOOTH )
     {
-        TrinityVector3 endwaypoint(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
-        TrinityVector3 destination(destx,desty,destz);
+        TrinityVector3<float> endwaypoint(path[path.size()-3],path[path.size()-2],path[path.size()-1]);
+        TrinityVector3<float> destination(destx,desty,destz);
         float ztoll = fabs(endwaypoint.z-destination.z);
         if ( ztoll > 6.0 )
             ztoll = 0;
         if ( endwaypoint.dist(destination) > STEP_SIZE+0.2f+ztoll )
         {
-            printf("Dest Unreachable ( %f (%f , %f ) )\n",endwaypoint.dist(destination),endwaypoint.z,destination.z);
+            sLog->outDebug(LOG_FILTER_MAPS,"Dest Unreachable ( %f (%f , %f ) )\n",endwaypoint.dist(destination),endwaypoint.z,destination.z);
             
             status = PATHFINDINGSTATUS_DEST_UNREACHABLE;
             if ( isCharge && origwpcount > 1 )
                 status = PATHFINDINGSTATUS_FINAL;
+            if ( !isnan(chasetargetposition.x) && chasetargetposition.dist(endwaypoint) <= targetmeleerange+u->GetMeleeReach() ) // Se è raggiungibile inr ange melee considera valido il percorso
+            {
+                status = PATHFINDINGSTATUS_FINAL;
+            }
         }
     }
 
@@ -917,12 +1150,45 @@ void PathFindingState::Calculate(Map* m,Unit * u)
         Creature * attacker = u->ToCreature();//Non può essere deletato da un altro thread perché è stato acquisito il lock
         if ( attacker )
         {
-            if ( attacker->GetCreatureTemplate()->InhabitType != 4 )
+            if ( !(attacker->GetCreatureTemplate()->InhabitType & INHABIT_AIR ))
             {
                 status = PATHFINDINGSTATUS_DEST_UNREACHABLE;
             }
 
         }
+    }
+    
+    if ( status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
+    {
+        if (Creature * c = u->ToCreature() )
+        {
+            if ( c->GetCreatureTemplate()->InhabitType & INHABIT_AIR)
+            {
+                wpcount = 2;
+                pathtemp.resize(6);
+                pathtemp[0] = lastx;
+                pathtemp[1] = lasty;
+                pathtemp[2] = lastz;
+                pathtemp[3] = destx;
+                pathtemp[4] = desty;
+                pathtemp[5] = destz;
+                path2send.resize(6);
+                path2send[0] = destx;//Con 1 waypoint solo si bugga la spline
+                path2send[1] = desty;
+                path2send[2] = destz;
+                path2send[3] = destx;
+                path2send[4] = desty;
+                path2send[5] = destz;
+                currwp = 0;
+
+                currtime = 0;
+                arrived = false;
+                calculated = true;
+                lastposupdate = 0;
+                status = PATHFINDINGSTATUS_FINAL;
+            }
+        }
+        
     }
     /*if ( u->isPet() && status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
         status = PATHFINDINGSTATUS_BROKENNAVMESH;*/
@@ -930,7 +1196,7 @@ void PathFindingState::Calculate(Map* m,Unit * u)
     if ( debug )
         m->mtcalls->post(boost::bind(&PathViewer::UpdatePath,debug,path));
 
-
+    sLog->outDebug(LOG_FILTER_MAPS,"<%s> Percorso (%f,%f,%f) -> (%f,%f,%f) Calcolato, Waypoint: %u , Stato: %d",u->GetName().c_str(),lastx,lasty,lastz,destx,desty,destz,uint32(path.size()/3),status);
 }
 
 uint32 idcounter = 0;
@@ -968,6 +1234,10 @@ PathFindingState* PathFindingMgr::AddPathfind(Unit* u, float destx, float desty,
     state->petownerposition.x = G3D::nan();
     state->petownerposition.y = G3D::nan();
     state->petownerposition.z = G3D::nan();
+    state->chasetargetposition.x = G3D::nan();
+    state->chasetargetposition.y = G3D::nan();
+    state->chasetargetposition.z = G3D::nan();
+    state->facingTarget = 0;
     //if ( u->GetMotionMaster()->pathfindingdebug ) TODO: Reimplementare
     //  state->debug = new PathViewer(u);
     addlist.push_back(state);
@@ -1088,7 +1358,7 @@ static int fixupCorridor(dtPolyRef* path, const int npath, const int maxPath,
         
         return req+size;
 }
-bool Map::NavMeshLOS(float startx, float starty, float startz, float endx,float endy, float endz)
+bool Map::NavMeshLOS(float startx, float starty, float startz, float endx, float endy, float endz, TrinityVector3<float>* coll_point)
 {
     boost::mutex::scoped_lock lock(navmeshmutex);
     float startPos[3]               = { starty, startz, startx };
@@ -1099,7 +1369,7 @@ bool Map::NavMeshLOS(float startx, float starty, float startz, float endx,float 
     dtNavMeshQuery* navQuery = new dtNavMeshQuery;
     if ( !navQuery->init(m_navMesh,1000) )
     {
-        sLog->outError("Impossibile inizializzare dtNavMeshQuery Map::NavMeshLOS(%f,%f,%f,%f,%f,%f)",startx,starty,startz,endx,endy,endz);
+        sLog->outError(LOG_FILTER_GENERAL, "Impossibile inizializzare dtNavMeshQuery Map::NavMeshLOS(%f,%f,%f,%f,%f,%f)",startx,starty,startz,endx,endy,endz);
 
         delete navQuery;
         return true;
@@ -1124,16 +1394,14 @@ bool Map::NavMeshLOS(float startx, float starty, float startz, float endx,float 
         }
         else
         {
-            TrinityVector3 start(startx, starty, startz);
-            TrinityVector3 end(endx, endy, endz);
-            TrinityVector3 diff = end-start;
-            TrinityVector3 res = start+diff*t;
-            navmeshLOS_coll_point[0] = res.x;
-            navmeshLOS_coll_point[1] = res.y;
-            navmeshLOS_coll_point[2] = res.z;
+            TrinityVector3<float> start(startx, starty, startz);
+            TrinityVector3<float> end(endx, endy, endz);
+            TrinityVector3<float> diff = end-start;
+            TrinityVector3<float> res = start+diff*t;
+            *coll_point = res;
             delete navQuery;
             delete mPathFilter;
-            return false;
+            return res == end;
         }
 
 
@@ -1173,19 +1441,20 @@ std::vector<G3D::Vector3> Map::PathFindDirect(Unit * moving, G3D::Vector3 start 
         }
     }
     pathfindResult res = Pathfind(dummypf,start.x,start.y,start.z,end.x,end.y,end.z,incflags,excflags);
-    if ( res.result != PATHFIND_OK )
+    TrinityVector3<float> lastwp;
+    if ( res.result == PATHFIND_OK )
     {
-        path.push_back(start);
-        path.push_back(end);
-
-    } else {
         for ( int i = 0; i < res.waypointcount; i++ )
         {
             path.push_back(G3D::Vector3(res.path[i*3+0],res.path[i*3+1],res.path[i*3+2]));
-
+	    lastwp.x = res.path[i*3+0];
+	    lastwp.y = res.path[i*3+1];
+	    lastwp.z = res.path[i*3+2];
         }
         delete res.path;
     }
+    if ( TrinityVector3<float>(end.x,end.y,end.z).dist(lastwp) > MELEE_RANGE )
+	path.clear();
     return path;
 }
 
@@ -1203,11 +1472,11 @@ void CorrectPetPosition(PathFindingState* pfstate, dtNavMeshQuery * navQuery, fl
         if ( res != 0 && t < FLT_MAX && t < 100.0)
         {
             sLog->outDebug(LOG_FILTER_MAPS, "Il pet non è in LOS sulla navmesh con il proprietario , correzione destinazione");
-            TrinityVector3 vDir(hitNormal[2],hitNormal[0],hitNormal[1]);
-            TrinityVector3 ownerPos(petownerpos[2],petownerpos[0],petownerpos[1]);
-            TrinityVector3 newDestifFail = ownerPos+(vDir*t);
-            TrinityVector3 diff = TrinityVector3(endPos[2],endPos[0],endPos[1])-ownerPos;
-            TrinityVector3 newDest_DX = ownerPos-diff;
+            TrinityVector3<float> vDir(hitNormal[2],hitNormal[0],hitNormal[1]);
+            TrinityVector3<float> ownerPos(petownerpos[2],petownerpos[0],petownerpos[1]);
+            TrinityVector3<float> newDestifFail = ownerPos+(vDir*t);
+            TrinityVector3<float> diff = TrinityVector3<float>(endPos[2],endPos[0],endPos[1])-ownerPos;
+            TrinityVector3<float> newDest_DX = ownerPos-diff;
             float tDX;
             float hitNormalDX[3];
             float endPosDX[3] = { newDest_DX.y, newDest_DX.z, newDest_DX.x };
@@ -1240,11 +1509,11 @@ mEndRef = oldEndRef;
 
 }*/
         /*}else if ( !mEndRef ) { //Il pet si trova su una zona non valida
-            TrinityVector3 vDir(hitNormal[2],hitNormal[0],hitNormal[1]);
-            TrinityVector3 ownerPos(petownerpos[2],petownerpos[0],petownerpos[1]);
-            TrinityVector3 newDestifFail = ownerPos+(vDir*t);
-            TrinityVector3 diff = TrinityVector3(endPos[2],endPos[0],endPos[1])-ownerPos;
-            TrinityVector3 newDest_DX = ownerPos-diff;
+            TrinityVector3<float> vDir(hitNormal[2],hitNormal[0],hitNormal[1]);
+            TrinityVector3<float> ownerPos(petownerpos[2],petownerpos[0],petownerpos[1]);
+            TrinityVector3<float> newDestifFail = ownerPos+(vDir*t);
+            TrinityVector3<float> diff = TrinityVector3<float>(endPos[2],endPos[0],endPos[1])-ownerPos;
+            TrinityVector3<float> newDest_DX = ownerPos-diff;
             float tDX;
             float hitNormalDX[3];
             float endPosDX[3] = { newDest_DX.y, newDest_DX.z, newDest_DX.x };
@@ -1274,7 +1543,7 @@ sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare la referenza di fine percor
 mEndRef = oldEndRef;
 
 }*/
-        float maxdist = TrinityVector3(petownerpos[0],petownerpos[1],petownerpos[2]).dist(TrinityVector3(endPos[0],endPos[1],endPos[2]));
+        float maxdist = TrinityVector3<float>(petownerpos[0],petownerpos[1],petownerpos[2]).dist(TrinityVector3<float>(endPos[0],endPos[1],endPos[2]));
         if ( !mEndRef )
         {
             float pp2[3] = { 10.0 , 10.0 , 10.0 };
@@ -1299,45 +1568,62 @@ mEndRef = oldEndRef;
         }
         navQuery->findNearestPoly(endPos,mPolyPickingExtents,mPathFilter,&mEndRef,NULL);
     } else {
-        sLog->outDetail("Impossibile trovare la ref del pet owner (%s)!",pfstate->petownerposition.as_str().c_str());
+        sLog->outDebug(LOG_FILTER_GENERAL, "Impossibile trovare la ref del pet owner (%s)!",pfstate->petownerposition.as_str().c_str());
 
     }
 
 
 }
-void PrintDetourError(dtStatus s)
+#define ERRCHKDT(x) \
+    if ( dtStatusDetail(s,x) ) \
+        errstr << #x << "|";
+inline void PrintDetourError(dtStatus s)
 {
-    if ( s != DT_SUCCESS )
+    if ( dtStatusFailed(s) )
     {
-        switch ( s )
-        {
-            case DT_STATUS_DETAIL_MASK:
-                sLog->outError("Pathfinding: DT_STATUS_DETAIL_MASK");
-                break;
-            case DT_WRONG_MAGIC:
-                sLog->outError("Pathfinding: DT_WRONG_MAGIC");
-                break;
-            case DT_WRONG_VERSION:
-                sLog->outError("Pathfinding: DT_WRONG_VERSION");
-                break;
-            case DT_OUT_OF_MEMORY:
-                sLog->outError("Pathfinding: DT_OUT_OF_MEMORY");
-                break;
-            case DT_BUFFER_TOO_SMALL:
-                sLog->outError("Pathfinding: DT_BUFFER_TOO_SMALL");
-                break;
-                
-            case DT_INVALID_PARAM:
-                sLog->outError("Pathfinding: DT_INVALID_PARAM");
-                break;
-            case DT_OUT_OF_NODES:
-                sLog->outError("Pathfinding: DT_OUT_OF_NODES");
-                break;
-            default:
-                sLog->outError("Pathfinding: Err %08x",s);
-        }
+        std::stringstream errstr;
+        errstr << "Pathfinding: ";
+        ERRCHKDT(DT_WRONG_MAGIC)
+        ERRCHKDT(DT_WRONG_VERSION)
+        ERRCHKDT(DT_OUT_OF_MEMORY)
+        ERRCHKDT(DT_BUFFER_TOO_SMALL)
+        ERRCHKDT(DT_INVALID_PARAM)
+        ERRCHKDT(DT_OUT_OF_NODES)
+        
+        sLog->outError(LOG_FILTER_GENERAL, "%s",errstr.str().c_str());
         
     }
+}
+
+bool isUnitOnGround(Unit * u)
+{
+    float pos[3] = {u->GetPositionY(), u->GetPositionZ(), u->GetPositionX()};
+    float mPolyPickingExtents[3]    = { 1.5f, 1.5f, 1.5f };
+    dtQueryFilter * mPathFilter = new dtQueryFilter();
+    mPathFilter->setIncludeFlags(0xFFFF);
+    mPathFilter->setExcludeFlags(0x0000);
+    dtNavMeshQuery* navQuery = new dtNavMeshQuery;
+    dtNavMesh* m_navMesh = u->GetMap()->m_navMesh;
+    if ( m_navMesh && navQuery ) {
+        if(navQuery->init(m_navMesh,/*numero nodi massimo da visitare... lo metterei nel config..*/1000)) {
+            dtPolyRef mStartRef;
+            dtStatus s;
+            s = navQuery->findNearestPoly(pos,mPolyPickingExtents,mPathFilter,&mStartRef,NULL);
+            if ( mStartRef )
+            {
+                delete mPathFilter;
+                delete navQuery;
+                return true;
+
+            }
+        }
+        delete mPathFilter;
+        delete navQuery;
+        return false;
+    }
+    delete mPathFilter;
+    if ( navQuery ) delete navQuery;
+    return false;
 }
 
 /*
@@ -1516,7 +1802,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                     float h = 0;
                     if ( !polys[0] )
                     {
-                        sLog->outError("Pathfinding: Invalid poly ref on getPolyHeight");
+                        sLog->outError(LOG_FILTER_GENERAL, "Pathfinding: Invalid poly ref on getPolyHeight");
                     }
                     dtStatus s = navQuery->getPolyHeight(polys[0], result, &h);
                    // printf("getPolyHeight: result[0] = %f result[1] = %f result[2] = %f , h = %f\n",result[0],result[1],result[2],h); 
@@ -1602,7 +1888,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                 ;
                 if (m_nsmoothPath < 2)
                 {
-                    sLog->outError("NavMesh corrotta o errore interno.");
+                    sLog->outDebug(LOG_FILTER_MAPS, "NavMesh corrotta o errore interno.");
                     result.result = PATHFIND_ERROR_NAVMESH;
                     result.path = NULL;
                     free(m_smoothPath);
@@ -1633,7 +1919,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
                 return result;
             }
             else {
-                sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare il poligono di partenza/fine : start=%p, end=%p",mStartRef,mEndRef);
+                sLog->outDebug(LOG_FILTER_MAPS, "Impossibile trovare il poligono di partenza/fine : start=%llu, end=%llu",mStartRef,mEndRef);
                 if (mStartRef == 0)
                 {
                     result.result = PATHFIND_CANT_FIND_START_NAVMESH;
@@ -1646,7 +1932,7 @@ pathfindResult Map::Pathfind(PathFindingState * pfstate, float srcx, float srcy,
             }
         }
     } else {
-        sLog->outError("NavMesh non caricata");
+        sLog->outError(LOG_FILTER_GENERAL, "NavMesh non caricata");
         result.result = PATHFIND_NAVMESH_NOT_LOADED;
         result.path = new float[6];
         result.path[0] = srcx;
@@ -1706,7 +1992,7 @@ void Map::UnloadNavMesh(int gx, int gy)
     uint32 packedGridPos = packTileID(uint32(gx), uint32(gy));
     if(m_mmapTileMap.find(packedGridPos) == m_mmapTileMap.end())
     {
-        sLog->outError("Impossibile fare l'unload della mmtile (%d,%d)\n",gx,gy);
+        sLog->outDebug(LOG_FILTER_MAPS, "Impossibile fare l'unload della mmtile (%d,%d)\n",gx,gy);
         return;
     }
 
@@ -1718,7 +2004,7 @@ void Map::UnloadNavMesh(int gx, int gy)
 
     if (!m_navMesh->removeTile(m_navMesh->getTileRefAt(int(tileX), int(tileY),1), 0, 0))
     {
-        sLog->outError("Impossibile fare l'unload della mmtile (%d,%d):Fallito removeTile\n",gx,gy);
+        sLog->outError(LOG_FILTER_GENERAL, "Impossibile fare l'unload della mmtile (%d,%d):Fallito removeTile\n",gx,gy);
         return;
 
     }
@@ -1753,7 +2039,7 @@ void PathViewer::UpdatePath(std::vector< float > path)
         {
             if ( !Trinity::IsValidMapCoord(path[path.size()+i*3+0],path[path.size()+i*3+1],path[path.size()+i*3+2]) )
                 continue;
-            Creature * mob = owner->SummonCreature(1,path[path.size()+i*3+0],path[path.size()+i*3+1],path[path.size()+i*3+2]);
+            Creature* mob = owner->SummonCreature(1,path[path.size()+i*3+0],path[path.size()+i*3+1],path[path.size()+i*3+2]);
             mob->SetVisible(true);
             if (!mob)
                 abort();

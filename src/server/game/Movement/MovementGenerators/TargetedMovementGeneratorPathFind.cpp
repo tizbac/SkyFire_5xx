@@ -191,6 +191,11 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::SetPathFindingState(PathFindi
 
 }
 
+namespace Movement
+{
+    UnitMoveType SelectSpeedType(uint32 moveFlags);
+}
+
 template<class T, typename D>
 bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint32 & time_diff )
 {
@@ -214,7 +219,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
     }
 
     // prevent movement while casting spells with cast time or channel time
-    if ( owner.IsNonMeleeSpellCasted ( false, false,  true ) || owner.HasUnitState(UNIT_STATE_ROOT) || owner.HasUnitState(UNIT_STATE_STUNNED) || owner.HasUnitState(UNIT_STATE_FLEEING)) {
+    if ( owner.HasUnitState(UNIT_STATE_CASTING) || owner.HasUnitState(UNIT_STATE_ROOT) || owner.HasUnitState(UNIT_STATE_STUNNED) || owner.HasUnitState(UNIT_STATE_FLEEING)) {
         if ( !owner.IsStopped() )
         {
             owner.StopMoving();
@@ -335,7 +340,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
         return true;
     }
     float calc_speed;
-    calc_speed = owner.GetSpeed( MOVE_RUN);
+    calc_speed = owner.GetSpeed(Movement::SelectSpeedType(owner.GetUnitMovementFlags()));
     
     if ( owner.ToCreature() && ( owner.ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
     {
@@ -453,7 +458,7 @@ void FollowMovementGeneratorPathFind<Creature>::_updateSpeed ( Creature &u )
     u.UpdateSpeed ( MOVE_SWIM,true );
 
     float calc_speed;
-    calc_speed = u.GetSpeed( MOVE_RUN);
+    calc_speed = u.GetSpeed( Movement::SelectSpeedType(u.GetUnitMovementFlags()));
     
     if ( u.ToCreature() && ( u.ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
     {
@@ -511,9 +516,9 @@ void FollowMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
     owner.AddUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
     {
         boost::mutex::scoped_lock lock ( owner.GetMap()->GetPathFindingMgr()->listsmutex );
-        
-        _setTargetLocation ( owner );
         _updateSpeed ( owner );
+        _setTargetLocation ( owner );
+        
     }
     guid = owner.GetGUID();
 }
