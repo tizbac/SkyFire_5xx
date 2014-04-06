@@ -130,7 +130,7 @@ void Map::LoadNavMesh(int gx, int gy)
 
     uint32 packedTilePos = packTileID(uint32(header->x), uint32(header->y));
     m_mmapTileMap.insert(std::pair<uint32, uint32>(packedGridPos, packedTilePos));
-    sLog->outString("Loaded mmtile %03i[%02i,%02i] into %03i(%u)[%02i,%02i]", i_id, gx, gy, i_id, GetInstanceId(), header->x, header->y);
+    sLog->outDebug(LOG_FILTER_MAPS, "Loaded mmtile %03i[%02i,%02i] into %03i(%u)[%02i,%02i]", i_id, gx, gy, i_id, GetInstanceId(), header->x, header->y);
 }
 bool Map::NavMeshLoaded(int gx, int gy)
 {
@@ -324,7 +324,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
         {
             boost::mutex::scoped_lock lock(pMgr->listsmutex);
             pMgr->removelist.push_back(pfstate);
-            sLog->outError("La Unit è stata deletata prima di deletare il movementgenerator");
+            sLog->outDebug(LOG_FILTER_MAPS, "La Unit è stata deletata prima di deletare il movementgenerator");
             sObjectAccessor->deletelock.unlock();
             continue;
         }
@@ -652,7 +652,7 @@ PathFindingState::~PathFindingState()
 {
 
 }
-bool PathFindingMgr::IsValid(PathFindingState* pf)
+bool PathFindingMgr::IsValid(PathFindingState* pf)//TODO: Ottimizzare se necessario tramitre l'uso di hashtable
 {
     for ( std::list<PathFindingState*>::iterator it = paths.begin(); it != paths.end(); it++ )
     {
@@ -1724,7 +1724,7 @@ void Map::UnloadNavMesh(int gx, int gy)
     }
     m_mmapTileMap.erase(packedGridPos);
 
-    sLog->outDetail("Unloaded mmtile %03i[%02i,%02i] from %03i(%u)", i_id, gx, gy, i_id, GetInstanceId());
+    sLog->outDebug(LOG_FILTER_MAPS, "Unloaded mmtile %03i[%02i,%02i] from %03i(%u)", i_id, gx, gy, i_id, GetInstanceId());
 }
 
 
