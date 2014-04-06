@@ -28,7 +28,7 @@ void Map::LoadNavMesh(int gx, int gy)
     int i_id = GetId();
     char fileName[512];
     FILE* file;
-
+    long bytesread;
     if(!m_navMesh)
     {
         sprintf(fileName, "%smmaps/%03i.mmap", sWorld->GetDataPath().c_str(), i_id);
@@ -48,14 +48,26 @@ void Map::LoadNavMesh(int gx, int gy)
 
         dtNavMeshParams params;
         uint32 offset;
-        fread(&params, sizeof(dtNavMeshParams), 1, file);
+        bytesread = fread(&params, sizeof(dtNavMeshParams), 1, file);
+        if ( bytesread < sizeof(dtNavMeshParams) )
+        {
+            sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,sizeof(dtNavMeshParams));
+            return;
+            
+        }
         /*if ( params.maxTiles < 65535 )
         {
           sLog->outError("Attenzione: Ci sono troppi pochi tile sulla navmesh %03u.mmap, Ridimensionamento",i_id);
           params.maxTiles = 65535;
           
         }*/
-        fread(&offset, sizeof(uint32), 1, file);
+        bytesread = fread(&offset, sizeof(uint32), 1, file);
+        if ( bytesread < sizeof(uint32) )
+        {
+            sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,sizeof(uint32));
+            return;
+            
+        }
         fclose(file);
 
         m_navMesh = new dtNavMesh;
@@ -92,7 +104,12 @@ void Map::LoadNavMesh(int gx, int gy)
     fseek(file, 0, SEEK_SET);
 
     unsigned char* data =  (unsigned char*)dtAlloc(length, DT_ALLOC_PERM);
-    fread(data, length, 1, file);
+    bytesread = fread(data, length, 1, file);
+    if ( bytesread < length )
+    {
+        sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,length);
+        return;
+    }
     fclose(file);
 
     dtMeshHeader* header = (dtMeshHeader*)data;
