@@ -47,11 +47,10 @@ void Map::LoadNavMesh(int gx, int gy)
         }
 
         dtNavMeshParams params;
-        uint32 offset;
         bytesread = fread(&params, sizeof(dtNavMeshParams), 1, file);
-        if ( bytesread < sizeof(dtNavMeshParams) )
+        if ( bytesread < 1 )
         {
-            sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,sizeof(dtNavMeshParams));
+            sLog->outError("%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread*sizeof(dtNavMeshParams),sizeof(dtNavMeshParams));
             return;
             
         }
@@ -61,13 +60,6 @@ void Map::LoadNavMesh(int gx, int gy)
           params.maxTiles = 65535;
           
         }*/
-        bytesread = fread(&offset, sizeof(uint32), 1, file);
-        if ( bytesread < sizeof(uint32) )
-        {
-            sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,sizeof(uint32));
-            return;
-            
-        }
         fclose(file);
 
         m_navMesh = new dtNavMesh;
@@ -105,9 +97,9 @@ void Map::LoadNavMesh(int gx, int gy)
 
     unsigned char* data =  (unsigned char*)dtAlloc(length, DT_ALLOC_PERM);
     bytesread = fread(data, length, 1, file);
-    if ( bytesread < length )
+    if ( bytesread < 1 )
     {
-        sLog->outError("%s:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread,length);
+        sLog->outError("%d:Short read while loading '%s' got %d bytes, expected %d",__LINE__,fileName,bytesread*length,length);
         return;
     }
     fclose(file);

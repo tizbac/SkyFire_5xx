@@ -306,9 +306,11 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::Update ( T &owner, const uint
                     
                 }
             } else {
-
-                if ( c->AI() && c->getVictim() == i_target.getTarget() )
-                    c->GetMap()->mtcalls->post ( boost::bind ( &CreatureEvadeDelayed,c->GetGUID() ) );
+                if ( !c->GetMap()->IsDungeon() )
+                {
+                    if ( c->AI() && c->getVictim() == i_target.getTarget() )
+                        c->GetMap()->mtcalls->post ( boost::bind ( &CreatureEvadeDelayed,c->GetGUID() ) );
+                }
             }
 
         }
