@@ -57,7 +57,7 @@ class dtNavMesh;
 class dtMeshTile;
 struct pathfindResult;
 class PathFindingState;
-class TrinityVector3;
+template <class T> class TrinityVector3;
 namespace boost{
     class thread;
     class mutex;
@@ -295,7 +295,7 @@ class Map : public GridRefManager<NGridType>
         pathfindResult Pathfind(PathFindingState * pfstate,float srcx, float srcy , float srcz , float destx , float desty , float destz,uint16 inclflags,uint16 exclflags,float searchdist = 2.0f);
         std::vector<G3D::Vector3> PathFindDirect(Unit * moving, G3D::Vector3 start , G3D::Vector3 end);
         bool NavMeshLoaded(int gx , int gy);
-        bool NavMeshLOS(float startx, float starty, float startz, float endx, float endy, float endz, TrinityVector3* coll_point);
+        bool NavMeshLOS(float startx, float starty, float startz, float endx, float endy, float endz, TrinityVector3<float>* coll_point);
         boost::asio::io_service * mtcalls;
         dtMeshTile* GetNavMeshTile(float x, float y);
         void UnloadNavMesh(int gx, int gy);

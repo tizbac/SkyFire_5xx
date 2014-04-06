@@ -48,7 +48,7 @@ void FleeingMovementGenerator<T>::_setTargetLocation(T* owner)
     Map * m = owner->GetMap();
     if ( m )
     {
-      TrinityVector3 v;
+      TrinityVector3<float> v;
       bool los = m->NavMeshLOS(owner->GetPositionX(),owner->GetPositionY(),owner->GetPositionZ(),x,y,z,&v);
       if (!los )
       {

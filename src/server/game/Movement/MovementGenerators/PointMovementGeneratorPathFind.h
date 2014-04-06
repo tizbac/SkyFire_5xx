@@ -27,8 +27,8 @@ class PointMovementGeneratorPathFind
 : public MovementGeneratorMedium< T, PointMovementGeneratorPathFind<T> >
 {
     public:
-        PointMovementGeneratorPathFind(uint32 _id, float _x, float _y, float _z, float _speed = 0.0f) : id(_id),
-            i_x(_x), i_y(_y), i_z(_z), speed(_speed), arrived(false) {}
+        PointMovementGeneratorPathFind(uint32 _id, float _x, float _y, float _z, float _speed = 0.0f, bool ischarge = false) : id(_id),
+            i_x(_x), i_y(_y), i_z(_z), speed(_speed), arrived(false), m_ischarge(ischarge) {}
         ~PointMovementGeneratorPathFind();
         void Initialize(T &);
         void Finalize(T &);
@@ -50,6 +50,7 @@ class PointMovementGeneratorPathFind
         float speed;
         uint64 guid;
         bool arrived;
+        bool m_ischarge;
 };
 
 /*class AssistanceMovementGenerator

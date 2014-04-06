@@ -61,69 +61,70 @@ enum PathfindingStatus{
   PATHFIND_DESTINATION_REACHED = 0,
   PATHFIND_DESTINATION_UNREACHABLE = 1
 };
-class TrinityVector3{
+
+template <class T> class TrinityVector3 {
   public:
-  float x,y,z;
+  T x,y,z;
   TrinityVector3()
   {
     x = 0;
     y = 0;
     z = 0;
   }
-  TrinityVector3(float x,float y ,float z)
+  TrinityVector3(T x,T y ,T z)
   {
     this->x = x;this->y = y;this->z = z;
   }
-  TrinityVector3 operator+(TrinityVector3 b)
+  TrinityVector3<T> operator+(TrinityVector3 b)
   {
-    return TrinityVector3(x+b.x,y+b.y,z+b.z);
+    return TrinityVector3<T>(x+b.x,y+b.y,z+b.z);
   }
-  TrinityVector3 operator-(TrinityVector3 b)
+  TrinityVector3<T> operator-(TrinityVector3 b)
   {
-    return TrinityVector3(x-b.x,y-b.y,z-b.z);
+    return TrinityVector3<T>(x-b.x,y-b.y,z-b.z);
   }
-  TrinityVector3 operator*(float b)
+  TrinityVector3<T> operator*(T b)
   {
     return TrinityVector3(x*b,y*b,z*b);
   }
-  TrinityVector3 operator/(float b)
+  TrinityVector3<T> operator/(T b)
   {
-      return TrinityVector3(x/b,y/b,z/b);
+      return TrinityVector3<T>(x/b,y/b,z/b);
 
   }
-  float Dot(TrinityVector3& b)
+  T Dot(TrinityVector3<T>& b)
   {
       return x*b.x+y*b.y+z*b.z;
 
   }
-  bool operator!=(TrinityVector3 b)
+  bool operator!=(TrinityVector3<T> b)
   {
       return x != b.x || y != b.y || z != b.z;
   }
-  TrinityVector3 operator=(TrinityVector3 b)
+  TrinityVector3<T> operator=(TrinityVector3<T> b)
   {
     x = b.x;
     y = b.y;
     z = b.z;
-    return TrinityVector3(x,y,z);
+    return TrinityVector3<T>(x,y,z);
   }
-  float dist(TrinityVector3 b)
+  T dist(TrinityVector3<T> b)
   {
     return sqrt((x-b.x)*(x-b.x)+(y-b.y)*(y-b.y)+(z-b.z)*(z-b.z));
 
 
   }
-  float mag()
+  T mag()
   {
     return sqrt((x)*(x)+(y)*(y)+(z)*(z));
   }
-  TrinityVector3 normalize()
+  TrinityVector3<T> normalize()
   {
     if ( mag() > 0.0 )
-      return TrinityVector3(x/mag(),y/mag(),z/mag());
-    return TrinityVector3(0,0,0);
+      return TrinityVector3<T>(x/mag(),y/mag(),z/mag());
+    return TrinityVector3<T>(0,0,0);
   }
-  bool operator==(TrinityVector3 b)
+  bool operator==(TrinityVector3<T> b)
   {
     return x==b.x&&y==b.y&&z==b.z;
   }
@@ -162,8 +163,8 @@ class PathFindingState
     float lastx;
     float lasty;
     float lastz;
-    TrinityVector3 petownerposition;
-    TrinityVector3 chasetargetposition;
+    TrinityVector3<float> petownerposition;
+    TrinityVector3<float> chasetargetposition;
     bool arrived;
     bool pause;
     PathViewer * debug;
@@ -180,7 +181,7 @@ class PathFindingState
     bool HasArrived();
     bool willdelete;
     PathFindingMgr * pmgr;
-    TrinityVector3 GetPositionNow();
+    TrinityVector3<float> GetPositionNow();
     boost::mutex statelock;
     ~PathFindingState();
     

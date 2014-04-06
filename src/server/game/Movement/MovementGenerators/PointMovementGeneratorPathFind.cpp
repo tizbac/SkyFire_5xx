@@ -47,7 +47,10 @@ void PointMovementGeneratorPathFind<T>::Initialize ( T &unit )
     unit.AddUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
     boost::mutex::scoped_lock lock(unit.GetMap()->GetPathFindingMgr()->listsmutex);
     if (!GetPathFindingState() || !unit.GetMap()->GetPathFindingMgr()->IsValid(GetPathFindingState()))
+    {
       SetPathFindingState(unit.GetMap()->GetPathFindingMgr()->AddPathfind(&unit,i_x,i_y,i_z,speed > 0.01 ? speed : unit.GetSpeed(MOVE_RUN),true));
+      GetPathFindingState()->isCharge = m_ischarge;
+    }
     guid = unit.GetGUID();
 }
 template <class T> PathFindingState* PointMovementGeneratorPathFind<T>::GetPathFindingState()

@@ -2122,7 +2122,7 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
     uint32 numSummons;
     //Fix totem e guardian dentro le colonne
     Position pos = *destTarget;
-    TrinityVector3 collpoint;
+    TrinityVector3<float> collpoint;
     bool reachable = m_caster->GetMap()->NavMeshLOS(m_caster->GetPositionX(),m_caster->GetPositionY(),m_caster->GetPositionZ(),pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ(),&collpoint);
     if ( !reachable )
     {
@@ -4606,7 +4606,10 @@ void Spell::EffectCharge(SpellEffIndex /*effIndex*/)
     if (effectHandleMode == SPELL_EFFECT_HANDLE_LAUNCH_TARGET)
     {
         Position pos;
-        unitTarget->GetContactPoint(m_caster, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
+        if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ) )
+            unitTarget->GetPosition(&pos);
+        else
+            unitTarget->GetContactPoint(m_caster, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
     
         if ( !sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ) )
         {
@@ -4638,6 +4641,7 @@ void Spell::EffectChargeDest(SpellEffIndex /*effIndex*/)
         destTarget->GetPosition(&pos);
         float angle = m_caster->GetRelativeAngle(pos.GetPositionX(), pos.GetPositionY());
         float dist = m_caster->GetDistance(pos);
+        MapEntry const* mapEntry = sMapStore.LookupEntry(m_caster->GetMapId());
         if (!sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED ))
             m_caster->GetFirstCollisionPosition(pos, dist, angle);
 

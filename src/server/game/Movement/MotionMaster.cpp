@@ -435,7 +435,7 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id,
     {
         TC_LOG_DEBUG("misc", "Player (GUID: %u) charge point (X: %f Y: %f Z: %f)", _owner->GetGUIDLow(), x, y, z);
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
-            Mutate ( new PointMovementGeneratorPathFind<Player> ( id, x, y, z, speed ), MOTION_SLOT_CONTROLLED );
+            Mutate ( new PointMovementGeneratorPathFind<Player> ( id, x, y, z, speed ,true), MOTION_SLOT_CONTROLLED );
         else
             Mutate(new PointMovementGenerator<Player>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
     }
@@ -444,7 +444,7 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id,
         TC_LOG_DEBUG("misc", "Creature (Entry: %u GUID: %u) charge point (X: %f Y: %f Z: %f)",
             _owner->GetEntry(), _owner->GetGUIDLow(), x, y, z);
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) && !_owner->GetUnitMovementFlags() & (MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY ) )
-            Mutate ( new PointMovementGeneratorPathFind<Creature> ( id, x, y, z, speed ), MOTION_SLOT_CONTROLLED );
+            Mutate ( new PointMovementGeneratorPathFind<Creature> ( id, x, y, z, speed, true ), MOTION_SLOT_CONTROLLED );
         else
             Mutate(new PointMovementGenerator<Creature>(id, x, y, z, generatePath, speed), MOTION_SLOT_CONTROLLED);
     }

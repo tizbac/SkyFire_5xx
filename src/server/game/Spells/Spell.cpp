@@ -5873,6 +5873,12 @@ SpellCastResult Spell::CheckCast(bool strict)
                         return SPELL_FAILED_OUT_OF_RANGE;
                     else if (!result || m_preGeneratedPath.GetPathType() & PATHFIND_NOPATH)
                         return SPELL_FAILED_NOPATH;*/// Dobbiamo gestirlo in modo asincrono questo
+                    Map * m = target->GetMap();
+		    std::vector<G3D::Vector3> res = m->PathFindDirect(m_caster,G3D::Vector3(m_caster->GetPositionX(),m_caster->GetPositionY(),m_caster->GetPositionZ()),
+			    G3D::Vector3(pos.m_positionX,pos.m_positionY,pos.m_positionZ));
+		    if ( res.size() == 0 )
+			return SPELL_FAILED_NOPATH;
+		
                 }
                 break;
             }

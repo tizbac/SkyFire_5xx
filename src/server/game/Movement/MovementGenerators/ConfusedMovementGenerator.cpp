@@ -89,7 +89,7 @@ bool ConfusedMovementGenerator<T>::DoUpdate(T* unit, uint32 diff)
             Map * m = unit->GetMap();
 	    if ( m )
 	    {
-	      TrinityVector3 v;
+	      TrinityVector3<float> v;
 	      bool los = m->NavMeshLOS(i_x,i_y,i_z,pos.GetPositionX(),pos.GetPositionY(),pos.GetPositionZ(),&v);
 	      if (!los )
 	      {
