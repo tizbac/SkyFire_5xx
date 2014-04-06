@@ -24,7 +24,7 @@
 #include "World.h"
 #include "MoveSplineInit.h"
 #include "MoveSpline.h"
-#include <MovementPrediction.h>
+
 #include "Player.h"
 #include "Pathfinding.h"
 #include <cmath>
@@ -78,8 +78,8 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
 
     float x, y, z;
     bool update_anyway = false;
-    if ( Player * pltarg = i_target->ToPlayer() )
-        update_anyway = pltarg->m_pred->HasMovementJustStarted();
+   /* if ( Player * pltarg = i_target->ToPlayer() )
+        update_anyway = pltarg->m_pred->HasMovementJustStarted();*/
     if ( i_offset && i_target->IsWithinDistInMap ( &owner,2*i_offset ) ) {
         if ( pfexisting && !GetPathFindingState()->arrived && !update_anyway)
             return;
@@ -130,21 +130,18 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     }
     if ( owner.IsControlledByPlayer() )
     {
-        Player * pltarg = i_target->ToPlayer();
-        if ( pltarg )
-        {
-            GetPathFindingState()->petownerposition = TrinityVector3 ( pltarg->m_pred->EstimateClientSidePosition().x,pltarg->m_pred->EstimateClientSidePosition().y,pltarg->m_pred->EstimateClientSidePosition().z );
-        }else{
-            GetPathFindingState()->petownerposition = TrinityVector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() );
-        }
+        GetPathFindingState()->petownerposition = TrinityVector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() );
+
+    }else{
+        GetPathFindingState()->petownerposition = TrinityVector3 (G3D::nan(),G3D::nan(),G3D::nan());
     }
     //printf("New destination %f %f %f\n",x,y,z);
     G3D::Vector3 latency_offset(0,0,0);
-    if ( Player * pltarg = i_target->ToPlayer() )
+    /*if ( Player * pltarg = i_target->ToPlayer() )
     {
         latency_offset = pltarg->m_pred->EstimateClientSideOffset();
         
-    }
+    }*/
     //std::cout << "Latency offset: " << latency_offset.toString() << std::endl;
     x += latency_offset.x;
     y += latency_offset.y;
@@ -557,6 +554,7 @@ template bool TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGenera
 template bool TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::Update ( Player &, const uint32 & );
 template bool TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::Update ( Creature &, const uint32 & );
 template bool TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::Update ( Creature &, const uint32 & );
+
 template TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::~TargetedMovementGeneratorMediumPathFind();
 template TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::~TargetedMovementGeneratorMediumPathFind();
 template TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::~TargetedMovementGeneratorMediumPathFind();

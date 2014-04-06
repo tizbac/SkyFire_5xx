@@ -956,6 +956,9 @@ PathFindingState* PathFindingMgr::AddPathfind(Unit* u, float destx, float desty,
     state->status = 0;
     state->debug = 0;
     state->isCharge = isCharge;
+    state->petownerposition.x = G3D::nan();
+    state->petownerposition.y = G3D::nan();
+    state->petownerposition.z = G3D::nan();
     //if ( u->GetMotionMaster()->pathfindingdebug ) TODO: Reimplementare
     //  state->debug = new PathViewer(u);
     addlist.push_back(state);
