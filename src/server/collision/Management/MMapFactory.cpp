@@ -21,7 +21,7 @@
 #include "World.h"
 #include "Config.h"
 #include "DisableMgr.h"
-
+#if 0
 namespace MMAP
 {
     // ######################## MMapFactory ########################
@@ -50,4 +50,7 @@ namespace MMAP
             g_MMapManager = NULL;
         }
     }
+    
 }
+
+#endif

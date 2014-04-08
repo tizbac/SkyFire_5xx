@@ -395,7 +395,15 @@ void Unit::Update(uint32 p_time)
     UpdateSplineMovement(p_time);
     i_motionMaster.UpdateMotion(p_time);
 }
+void Unit::GetRandomContactPointBehind(const Unit* obj, float &x, float &y, float &z, float distance2dMin, float distance2dMax) const
+{
+    float combat_reach = GetCombatReach();
+    if (combat_reach < 0.1f) // sometimes bugged for players
+        combat_reach = DEFAULT_COMBAT_REACH;
 
+    GetNearPoint(obj, x, y, z, obj->GetCombatReach(), distance2dMin+(distance2dMax-distance2dMin) * (float)rand_norm()
+        , GetOrientation() + static_cast<float>(M_PI*2/3) + (static_cast<float>(M_PI*2/3) * (float)rand_norm()));
+}
 void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 id,bool catmull_rom,bool flying,uint64 facingTarget)
 {
 

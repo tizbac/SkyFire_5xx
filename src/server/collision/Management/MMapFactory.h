@@ -19,7 +19,7 @@
 
 #ifndef _MMAP_FACTORY_H
 #define _MMAP_FACTORY_H
-
+#if 0
 #include "MMapManager.h"
 #include "UnorderedMap.h"
 #include "DetourAlloc.h"
@@ -46,6 +46,6 @@ namespace MMAP
             static bool IsPathfindingEnabled(uint32 mapId);
     };
 }
-
+#endif
 #endif
 

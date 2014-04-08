@@ -26,6 +26,12 @@
 #include "Player.h"
 #include "ObjectAccessor.h"
 #include "Pathfinding.h"
+
+namespace Movement
+{
+    UnitMoveType SelectSpeedType(uint32 moveFlags);
+}
+
 template<class T>
 PointMovementGeneratorPathFind<T>::~PointMovementGeneratorPathFind()
 {
@@ -39,19 +45,19 @@ PointMovementGeneratorPathFind<T>::~PointMovementGeneratorPathFind()
 }
 //----- Point Movement Generator
 template<class T>
-void PointMovementGeneratorPathFind<T>::Initialize ( T &unit )
+void PointMovementGeneratorPathFind<T>::DoInitialize ( T* unit )
 {
-    if ( !unit.IsStopped() )
-        unit.StopMoving();
+    if ( !unit->IsStopped() )
+        unit->StopMoving();
 
-    unit.AddUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
-    boost::mutex::scoped_lock lock(unit.GetMap()->GetPathFindingMgr()->listsmutex);
-    if (!GetPathFindingState() || !unit.GetMap()->GetPathFindingMgr()->IsValid(GetPathFindingState()))
+    unit->AddUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
+    boost::mutex::scoped_lock lock(unit->GetMap()->GetPathFindingMgr()->listsmutex);
+    if (!GetPathFindingState() || !unit->GetMap()->GetPathFindingMgr()->IsValid(GetPathFindingState()))
     {
-      SetPathFindingState(unit.GetMap()->GetPathFindingMgr()->AddPathfind(&unit,i_x,i_y,i_z,speed > 0.01 ? speed : unit.GetSpeed(MOVE_RUN),true));
+      SetPathFindingState(unit->GetMap()->GetPathFindingMgr()->AddPathfind(unit,i_x,i_y,i_z,speed > 0.01 ? speed : unit->GetSpeed(Movement::SelectSpeedType(unit->GetUnitMovementFlags())),true));
       GetPathFindingState()->isCharge = m_ischarge;
     }
-    guid = unit.GetGUID();
+    guid = unit->GetGUID();
 }
 template <class T> PathFindingState* PointMovementGeneratorPathFind<T>::GetPathFindingState()
 {
@@ -65,15 +71,16 @@ template <class T> void PointMovementGeneratorPathFind<T>::SetPathFindingState(P
 }
 
 
+
 template<class T>
-bool PointMovementGeneratorPathFind<T>::Update ( T &unit, const uint32 & /*diff*/ )
+bool PointMovementGeneratorPathFind<T>::DoUpdate ( T* unit, uint32 /*diff*/ )
 {
-    if ( !&unit )
+    if ( !unit )
         return false;
 
-    if ( unit.HasUnitState ( UNIT_STATE_ROOT | UNIT_STATE_STUNNED ) ) {
-        unit.ClearUnitState ( UNIT_STATE_ROAMING_MOVE );
-        if (unit.HasUnitState(UNIT_STATE_CHARGING))
+    if ( unit->HasUnitState ( UNIT_STATE_ROOT | UNIT_STATE_STUNNED ) ) {
+        unit->ClearUnitState ( UNIT_STATE_ROAMING_MOVE );
+        if (unit->HasUnitState(UNIT_STATE_CHARGING))
             return false;
         else
         {
@@ -82,13 +89,13 @@ bool PointMovementGeneratorPathFind<T>::Update ( T &unit, const uint32 & /*diff*
         }
     }
     
-    unit.AddUnitState ( UNIT_STATE_ROAMING_MOVE );
-    boost::mutex::scoped_lock lock(unit.GetMap()->GetPathFindingMgr()->listsmutex);
-    if ( unit.GetMap()->GetPathFindingMgr()->IsValid(GetPathFindingState()) )
+    unit->AddUnitState ( UNIT_STATE_ROAMING_MOVE );
+    boost::mutex::scoped_lock lock(unit->GetMap()->GetPathFindingMgr()->listsmutex);
+    if ( unit->GetMap()->GetPathFindingMgr()->IsValid(GetPathFindingState()) )
     {
       if ( GetPathFindingState()->status == PATHFINDINGSTATUS_DEST_UNREACHABLE )
           {
-                Player * pl = unit.ToPlayer();
+                Player * pl = unit->ToPlayer();
                 if ( pl )
                 {
                   pl->GetSession()->SendNotification("Target non raggiungibile");
@@ -97,57 +104,71 @@ bool PointMovementGeneratorPathFind<T>::Update ( T &unit, const uint32 & /*diff*
           }
       if ( GetPathFindingState()->HasArrived() )
       {
-        sLog->outDebug(LOG_FILTER_MAPS, "PointMovement: Arrived.\n");
-        unit.ClearUnitState(UNIT_STATE_MOVE);
+        TC_LOG_DEBUG("movement", "PointMovement: Arrived.\n");
+        unit->ClearUnitState(UNIT_STATE_MOVE);
         arrived = true;
         return false;
+      }
+      if ( !speed )
+      {
+          
+        float calc_speed;
+        calc_speed = unit->GetSpeed(Movement::SelectSpeedType(unit->GetUnitMovementFlags()));
+        if ( GetPathFindingState() ) {
+            if ( GetPathFindingState()->speed != calc_speed) {
+                
+                GetPathFindingState()->speed = calc_speed;
+                GetPathFindingState()->mustrecalculate = true;
+                //printf("Nuova velocità\n");
+            }
+        }
       }
     }
     return !arrived;
 }
 
 template<class T>
-void PointMovementGeneratorPathFind<T>:: Finalize ( T &unit )
+void PointMovementGeneratorPathFind<T>::DoFinalize ( T* unit )
 {
-    unit.ClearUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
+    unit->ClearUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
 
     if ( arrived )
         MovementInform ( unit );
 }
 
 template<class T>
-void PointMovementGeneratorPathFind<T>::Reset ( T &unit )
+void PointMovementGeneratorPathFind<T>::DoReset ( T* unit )
 {
-    if ( !unit.IsStopped() )
-        unit.StopMoving();
+    if ( !unit->IsStopped() )
+        unit->StopMoving();
 
-    unit.AddUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
+    unit->AddUnitState ( UNIT_STATE_ROAMING|UNIT_STATE_ROAMING_MOVE );
 }
 
 template<class T>
-void PointMovementGeneratorPathFind<T>::MovementInform ( T & /*unit*/ )
+void PointMovementGeneratorPathFind<T>::MovementInform ( T* /*unit*/ )
 {
 }
 
-template <> void PointMovementGeneratorPathFind<Creature>::MovementInform ( Creature &unit )
+template <> void PointMovementGeneratorPathFind<Creature>::MovementInform ( Creature* unit )
 {
     //if (id == EVENT_FALL_GROUND)
     //{
     //    unit.setDeathState(JUST_DIED);
     //    unit.SetFlying(true);
     //}
-    if ( unit.AI() )
-        unit.AI()->MovementInform ( POINT_MOTION_TYPE, id );
+    if ( unit->AI() )
+        unit->AI()->MovementInform ( POINT_MOTION_TYPE, id );
 }
 
-template void PointMovementGeneratorPathFind<Player>::DoInitialize ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::DoInitialize ( Creature& );
-template void PointMovementGeneratorPathFind<Player>::DoFinalize ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::DoFinalize ( Creature& );
-template void PointMovementGeneratorPathFind<Player>::DoReset ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::DoReset ( Creature& );
-template bool PointMovementGeneratorPathFind<Player>::DoUpdate ( Player &, const uint32 & );
-template bool PointMovementGeneratorPathFind<Creature>::DoUpdate ( Creature&, const uint32 & );
+template void PointMovementGeneratorPathFind<Player>::DoInitialize ( Player* );
+template void PointMovementGeneratorPathFind<Creature>::DoInitialize ( Creature* );
+template void PointMovementGeneratorPathFind<Player>::DoFinalize ( Player* );
+template void PointMovementGeneratorPathFind<Creature>::DoFinalize ( Creature* );
+template void PointMovementGeneratorPathFind<Player>::DoReset ( Player* );
+template void PointMovementGeneratorPathFind<Creature>::DoReset ( Creature* );
+template bool PointMovementGeneratorPathFind<Player>::DoUpdate ( Player*, uint32 );
+template bool PointMovementGeneratorPathFind<Creature>::DoUpdate ( Creature*, uint32 );
 template PointMovementGeneratorPathFind<Player>::~PointMovementGeneratorPathFind();
 template PointMovementGeneratorPathFind<Creature>::~PointMovementGeneratorPathFind();
 template PathFindingState* PointMovementGeneratorPathFind<Player>::GetPathFindingState();

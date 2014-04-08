@@ -35,10 +35,10 @@ class HomeMovementGeneratorPathFind< Creature >
         HomeMovementGeneratorPathFind() : arrived(false) {SetPathFindingState(NULL);}
         ~HomeMovementGeneratorPathFind();
 
-        void DoInitialize(Creature *);
-        void DoFinalize(Creature *);
-        void DoReset(Creature *);
-        bool DoUpdate(Creature *, const uint32);
+        void DoInitialize(Creature*);
+        void DoFinalize(Creature*);
+        void DoReset(Creature*);
+        bool DoUpdate(Creature*, const uint32);
         MovementGeneratorType GetMovementGeneratorType() { return HOME_MOTION_TYPE; }
         PathFindingState* GetPathFindingState()
         {
@@ -51,7 +51,7 @@ class HomeMovementGeneratorPathFind< Creature >
           
         }
     private:
-        void _setTargetLocation(Creature *);
+        void _setTargetLocation(Creature*);
         bool arrived;
         uint64 guid;
 };

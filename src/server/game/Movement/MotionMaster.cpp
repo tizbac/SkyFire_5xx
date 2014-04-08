@@ -91,7 +91,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
     ASSERT(!empty());
 
     _cleanFlag |= MMCF_UPDATE;
-    if (!top()->Update(_owner, diff))
+    if (!top()->DoUpdate(_owner, diff))
     {
         _cleanFlag &= ~MMCF_UPDATE;
         MovementExpired();
@@ -115,7 +115,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
         else if (needInitTop())
             InitTop();
         else if (_cleanFlag & MMCF_RESET)
-            top()->Reset(_owner);
+            top()->DoReset(_owner);
 
         _cleanFlag &= ~MMCF_RESET;
     }
@@ -136,7 +136,7 @@ void MotionMaster::DirectClean(bool reset)
     if (needInitTop())
         InitTop();
     else if (reset)
-        top()->Reset(_owner);
+        top()->DoReset(_owner);
 }
 
 void MotionMaster::DelayedClean()
@@ -167,7 +167,7 @@ void MotionMaster::DirectExpire(bool reset)
     else if (needInitTop())
         InitTop();
     else if (reset)
-        top()->Reset(_owner);
+        top()->DoReset(_owner);
 }
 
 void MotionMaster::DelayedExpire()
@@ -220,7 +220,7 @@ void MotionMaster::MoveTargetedHome()
         {
             TC_LOG_DEBUG("misc", "Following %s (GUID: %u)", target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature", target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : ((Creature*)target)->GetDBTableGUIDLow());
             if ( sWorld->getBoolConfig ( CONFIG_PATHFINDING_ENABLED ) )
-                Mutate ( new FollowMovementGeneratorPathFind<Creature> ( *target,PET_FOLLOW_DIST,PET_FOLLOW_ANGLE ), MOTION_SLOT_ACTIVE );
+                Mutate ( new FollowMovementGeneratorPathFind<Creature> ( target,PET_FOLLOW_DIST,PET_FOLLOW_ANGLE ), MOTION_SLOT_ACTIVE );
             else
                 Mutate(new FollowMovementGenerator<Creature>(target, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE), MOTION_SLOT_ACTIVE);
         }
@@ -260,7 +260,7 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
-            Mutate ( new ChaseMovementGeneratorPathFind<Player> ( *target,dist,angle ), MOTION_SLOT_ACTIVE );
+            Mutate ( new ChaseMovementGeneratorPathFind<Player> ( target,dist,angle ), MOTION_SLOT_ACTIVE );
         else
             Mutate(new ChaseMovementGenerator<Player>(target, dist, angle), MOTION_SLOT_ACTIVE);
     }
@@ -271,7 +271,7 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
-            Mutate ( new ChaseMovementGeneratorPathFind<Creature> ( *target,dist,angle ), MOTION_SLOT_ACTIVE );
+            Mutate ( new ChaseMovementGeneratorPathFind<Creature> ( target,dist,angle ), MOTION_SLOT_ACTIVE );
         else
             Mutate(new ChaseMovementGenerator<Creature>(target, dist, angle), MOTION_SLOT_ACTIVE);
     }
@@ -290,7 +290,7 @@ void MotionMaster::MoveFollow(Unit* target, float dist, float angle, MovementSlo
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
-            Mutate ( new FollowMovementGeneratorPathFind<Player> ( *target,dist,angle ), slot );
+            Mutate ( new FollowMovementGeneratorPathFind<Player> ( target,dist,angle ), slot );
         else
             Mutate(new FollowMovementGenerator<Player>(target, dist, angle), slot);
     }
@@ -301,7 +301,7 @@ void MotionMaster::MoveFollow(Unit* target, float dist, float angle, MovementSlo
             target->GetTypeId() == TYPEID_PLAYER ? "player" : "creature",
             target->GetTypeId() == TYPEID_PLAYER ? target->GetGUIDLow() : target->ToCreature()->GetDBTableGUIDLow());
         if ( sWorld->getBoolConfig(CONFIG_PATHFINDING_ENABLED) )
-            Mutate ( new FollowMovementGeneratorPathFind<Creature> ( *target,dist,angle ), slot );
+            Mutate ( new FollowMovementGeneratorPathFind<Creature> ( target,dist,angle ), slot );
         else
             Mutate(new FollowMovementGenerator<Creature>(target, dist, angle), slot);
     }
@@ -572,7 +572,7 @@ void MotionMaster::Mutate(MovementGenerator *m, MovementSlot slot)
     else
     {
         _needInit[slot] = false;
-        m->Initialize(_owner);
+        m->DoInitialize(_owner);
     }
 }
 
@@ -640,7 +640,7 @@ MovementGeneratorType MotionMaster::GetMotionSlotType(int slot) const
 
 void MotionMaster::InitTop()
 {
-    top()->Initialize(_owner);
+    top()->DoInitialize(_owner);
     _needInit[_top] = false;
 }
 
@@ -648,7 +648,7 @@ void MotionMaster::DirectDelete(_Ty curr)
 {
     if (isStatic(curr))
         return;
-    curr->Finalize(_owner);
+    curr->DoFinalize(_owner);
     delete curr;
 }
 

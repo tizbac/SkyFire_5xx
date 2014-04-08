@@ -245,7 +245,7 @@ include_directories(
 
 if ( NOT STATIC_LINK )
 add_library ( game SHARED ${game_STAT_SRCS})
-target_link_libraries(game shared scripts pfboostsystem collision g3dlib gsoap pfboostthread pfboostregex Detour ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
+target_link_libraries(game skyfireshared scripts pfboostsystem skyfirecollision g3dlib gsoap pfboostthread pfboostregex Detour ${JEMALLOC_LIBRARY} ${READLINE_LIBRARY} ${TERMCAP_LIBRARY} ${ACE_LIBRARY} ${MYSQL_LIBRARY} ${OPENSSL_LIBRARIES} ${OPENSSL_EXTRA_LIBRARIES} ${ZLIB_LIBRARIES} ${OSX_LIBS} )
 
 else ( NOT STATIC_LINK )
 add_library(game STATIC

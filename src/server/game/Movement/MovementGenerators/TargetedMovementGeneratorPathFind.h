@@ -31,16 +31,16 @@ class TargetedMovementGeneratorMediumPathFind
 : public MovementGeneratorMedium< T, D >, public TargetedMovementGeneratorBase
 {
     protected:
-        TargetedMovementGeneratorMediumPathFind(Unit &target, float offset, float angle) :
+        TargetedMovementGeneratorMediumPathFind(Unit* target, float offset, float angle) :
             TargetedMovementGeneratorBase(target), i_recheckDistance(0),
-            i_offset(offset), i_angle(angle),
+            i_offset(offset), i_angle(angle), i_lastOrientation(target->GetOrientation()),
             i_recalculateTravel(false), i_targetReached(false), unreachabletimer(0), guid(0)
         {
         }
         ~TargetedMovementGeneratorMediumPathFind();
 
     public:
-        bool DoUpdate(T *, const uint32 &);
+        bool DoUpdate(T*, uint32);
         Unit* GetTarget() const { return i_target.getTarget(); }
 
         void unitSpeedChanged() { i_recalculateTravel=true; }
@@ -48,13 +48,14 @@ class TargetedMovementGeneratorMediumPathFind
         PathFindingState* GetPathFindingState();
         void SetPathFindingState(PathFindingState* st);
     protected:
-        void _setTargetLocation(T* owner);
+        void _setTargetLocation(T*);
 
         TimeTrackerSmall i_recheckDistance;
         float i_offset;
         float i_angle;
         bool i_recalculateTravel : 1;
         bool i_targetReached : 1;
+        float i_lastOrientation;
         uint32 unreachabletimer;
         uint64 guid;
         G3D::Vector3 lastdestination;
@@ -64,50 +65,50 @@ template<class T>
 class ChaseMovementGeneratorPathFind : public TargetedMovementGeneratorMediumPathFind<T, ChaseMovementGeneratorPathFind<T> >
 {
     public:
-        ChaseMovementGeneratorPathFind(Unit &target)
+        ChaseMovementGeneratorPathFind(Unit* target)
             : TargetedMovementGeneratorMediumPathFind<T, ChaseMovementGeneratorPathFind<T> >(target) {}
-        ChaseMovementGeneratorPathFind(Unit &target, float offset, float angle)
+        ChaseMovementGeneratorPathFind(Unit* target, float offset, float angle)
             : TargetedMovementGeneratorMediumPathFind<T, ChaseMovementGeneratorPathFind<T> >(target, offset, angle) {}
         ~ChaseMovementGeneratorPathFind() {}
 
         MovementGeneratorType GetMovementGeneratorType() { return CHASE_MOTION_TYPE; }
 
-        void DoInitialize(T *);
-        void DoFinalize(T* owner);
-        void DoReset(T* owner);
-        void DoMovementInform(T *);
+        void DoInitialize(T*);
+        void DoFinalize(T*);
+        void DoReset(T*);
+        void MovementInform(T*);
 
-        static void _clearUnitStateMove(T *u) { u->ClearUnitState(UNIT_STATE_CHASE_MOVE); }
-        static void _addUnitStateMove(T *u)  { u->AddUnitState(UNIT_STATE_CHASE_MOVE); }
+        static void _clearUnitStateMove(T* u) { u->ClearUnitState(UNIT_STATE_CHASE_MOVE); }
+        static void _addUnitStateMove(T* u)  { u->AddUnitState(UNIT_STATE_CHASE_MOVE); }
         bool EnableWalking() const { return false;}
-        bool _lostTarget(T *u) const { return u->GetVictim() != this->GetTarget(); }
-        void _reachTarget(T* owner);
+        bool _lostTarget(T*) const;
+        void _reachTarget(T*);
 };
 
 template<class T>
 class FollowMovementGeneratorPathFind : public TargetedMovementGeneratorMediumPathFind<T, FollowMovementGeneratorPathFind<T> >
 {
     public:
-        FollowMovementGeneratorPathFind(Unit &target)
+        FollowMovementGeneratorPathFind(Unit* target)
             : TargetedMovementGeneratorMediumPathFind<T, FollowMovementGeneratorPathFind<T> >(target){}
-        FollowMovementGeneratorPathFind(Unit &target, float offset, float angle)
+        FollowMovementGeneratorPathFind(Unit* target, float offset, float angle)
             : TargetedMovementGeneratorMediumPathFind<T, FollowMovementGeneratorPathFind<T> >(target, offset, angle) {}
         ~FollowMovementGeneratorPathFind() {}
 
         MovementGeneratorType GetMovementGeneratorType() { return FOLLOW_MOTION_TYPE; }
 
-        void DoInitialize(T *);
-        void DoFinalize(T *);
-        void DoReset(T *);
-        void DoMovementInform(T *);
+        void DoInitialize(T*);
+        void DoFinalize(T*);
+        void DoReset(T*);
+        void MovementInform(T*);
 
-        static void _clearUnitStateMove(T *u) { u->ClearUnitState(UNIT_STATE_FOLLOW_MOVE); }
-        static void _addUnitStateMove(T *u)  { u->AddUnitState(UNIT_STATE_FOLLOW_MOVE); }
+        static void _clearUnitStateMove(T* u) { u->ClearUnitState(UNIT_STATE_FOLLOW_MOVE); }
+        static void _addUnitStateMove(T* u)  { u->AddUnitState(UNIT_STATE_FOLLOW_MOVE); }
         bool EnableWalking() const;
-        bool _lostTarget(T *) const { return false; }
-        void _reachTarget(T *) {}
+        bool _lostTarget(T*) const { return false; }
+        void _reachTarget(T*) {}
     private:
-        void _updateSpeed(T *u);
+        void _updateSpeed(T* u);
 };
 
 #endif

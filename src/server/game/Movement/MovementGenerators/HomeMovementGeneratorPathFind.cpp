@@ -24,6 +24,7 @@
 #include "MoveSpline.h"
 #include "Pathfinding.h"
 #include "ObjectAccessor.h"
+#include "MovementStructures.h"
 HomeMovementGeneratorPathFind<Creature>::~HomeMovementGeneratorPathFind()
 {
     Unit * u;
@@ -40,20 +41,20 @@ HomeMovementGeneratorPathFind<Creature>::~HomeMovementGeneratorPathFind()
 
 
 }
-void HomeMovementGeneratorPathFind<Creature>::DoInitialize ( Creature * owner )
+void HomeMovementGeneratorPathFind<Creature>::DoInitialize ( Creature* owner )
 {
     owner->AddUnitState ( UNIT_STATE_EVADE );
     guid = owner->GetGUID();
     _setTargetLocation ( owner );
 }
 
-void HomeMovementGeneratorPathFind<Creature>::DoReset ( Creature * )
+void HomeMovementGeneratorPathFind<Creature>::DoReset ( Creature* )
 {
 }
 
-void HomeMovementGeneratorPathFind<Creature>::_setTargetLocation ( Creature * owner )
+void HomeMovementGeneratorPathFind<Creature>::_setTargetLocation ( Creature* owner )
 {
-    if ( !&owner )
+    if ( !owner )
         return;
 
     if ( owner->HasUnitState ( UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED ) )
@@ -66,14 +67,14 @@ void HomeMovementGeneratorPathFind<Creature>::_setTargetLocation ( Creature * ow
     owner->GetHomePosition ( x, y, z, o );
 
     if ( !GetPathFindingState() || !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
-        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( ( Unit* ) &owner,x,y,z,owner->GetSpeed ( MOVE_RUN ) ) );
+        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind (owner,x,y,z,owner->GetSpeed ( MOVE_RUN ) ) );
     else
         GetPathFindingState()->UpdateDestination ( x,y,z,0 );
     arrived = false;
     owner->ClearUnitState ( UNIT_STATE_ALL_STATE & ~UNIT_STATE_EVADE );
 }
 
-bool HomeMovementGeneratorPathFind<Creature>::DoUpdate ( Creature *owner, const uint32 /*time_diff*/ )
+bool HomeMovementGeneratorPathFind<Creature>::DoUpdate ( Creature* owner, const uint32 /*time_diff*/ )
 {
     owner->GetMap()->GetPathFindingMgr()->listsmutex.lock();
     
