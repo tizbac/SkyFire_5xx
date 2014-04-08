@@ -396,74 +396,92 @@ void Unit::Update(uint32 p_time)
     i_motionMaster.UpdateMotion(p_time);
 }
 
-void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 id,bool catmull_rom,bool flying)
+void Unit::SendMonsterMove(std::vector< float > &path, uint32 totaltime,uint32 id,bool catmull_rom,bool flying,uint64 facingTarget)
 {
 
-        if ( path.size()/3 < 2 )
-                return;
-        if ( remainingjumptime > 0 )
-        {
-                hastosendpath = true;
-                path2send = path;
-                path2sendtime = totaltime;
-                return;
-        }
-        TC_LOG_DEBUG("maps", "<%s> Send monstermove Waypoints: %d, totaltime=%u",GetName().c_str(),path.size()/3,totaltime);
-        std::vector<G3D::Vector3> points;
-        for ( int i = 0; i < path.size()/3; i++ )
-        {
-            points.push_back(G3D::Vector3(path[i*3+0],path[i*3+1],path[i*3+2]));
-        }
-        
-        WorldPacket data(SMSG_MONSTER_MOVE, 1+12+4+1+4+4+4+4*path.size()+GetPackGUID().size());
-        data.append(GetPackGUID());
-        data << uint8(0);                                       // new in 3.1
-        TC_LOG_DEBUG("maps","<%s> WPMM: %f %f %f",GetName().c_str(),path[0],path[1], path[2]);
-        data << path[0] << path[1] << path[2];//GetPositionX() << GetPositionY() << GetPositionZ();
-        data << id;
-        data << uint8(0);
-        Movement::MoveSplineFlag splineflags;
-        splineflags = 0;
-        splineflags.catmullrom = catmull_rom;
-        splineflags.flying = flying;
-        splineflags.walkmode = !flying;
+       if ( path.size()/3 < 1 )
+        return;
+    if ( path.size()/3 < 2 )
+        catmull_rom = false;
+    if ( remainingjumptime > 0 )
+    {
+        hastosendpath = true;
+        path2send = path;
+        path2sendtime = totaltime;
+        return;
+    }
+    TC_LOG_DEBUG("maps", "<%s> Send monstermove Waypoints: %u, totaltime=%u",GetName().c_str(),(uint32) path.size()/3,totaltime);
+    std::vector<Vector3> points;
+    for ( int i = 0; i < path.size()/3; i++ )
+    {
+        points.push_back(Vector3(path[i*3+0],path[i*3+1],path[i*3+2]));
+    }
 
-        data << uint32(splineflags & ~Movement::MoveSplineFlag::Mask_No_Monster_Move);
-        if ( totaltime > 0 )
-                data << uint32(totaltime);
+    WorldPacket data(SMSG_MONSTER_MOVE, 64);
+    data.append(GetPackGUID());
+    if (GetTransGUID())
+    {
+        data.SetOpcode(SMSG_MONSTER_MOVE_TRANSPORT);
+        data.appendPackGUID(GetTransGUID());
+        data << int8(GetTransSeat());
+    }
+    data << uint8(0);                                       // sets/unsets MOVEMENTFLAG2_UNK7 (0x40)
+    TC_LOG_DEBUG("maps" , "<%s> WPMM: %f %f %f",GetName().c_str(),path[0],path[1], path[2]);
+    Vector3 p = points[0];
+    data << p.x << p.y << p.z;
+    data << id;
+    //data << uint8(0);
+    if (facingTarget)
+    {
+        data << uint8(3); // MonsterMoveFacingTarget
+        data << facingTarget;
+    }
+    else
+        data << uint8(0);
+    Movement::MoveSplineFlag splineflags;
+    splineflags = 0;
+    //splineflags.catmullrom = catmull_rom;
+    splineflags.flying = flying;
+    splineflags.walkmode = m_movementInfo.HasMovementFlag(MOVEMENTFLAG_WALKING);
+    splineflags.no_spline = path.size()/3 < 2;
+    data << uint32(splineflags & ~Movement::MoveSplineFlag::Mask_No_Monster_Move);
+    if ( totaltime > 0 )
+        data << int32(totaltime);
+    else
+    {
+        data << int32(1);
+        TC_LOG_DEBUG("maps" , "%s : totaltime = 0!\n",__PRETTY_FUNCTION__);
+    }
+    uint32 lastIndex = points.size() - 1;
+    data << lastIndex;
+    p = points[lastIndex];
+    data << p.x << p.y << p.z;   // destination
+    if (lastIndex > 1)
+    {
+        //if ( !catmull_rom )
+        //{
+            Vector3 middle = (points[0] + points[lastIndex]) / 2.f;
+            // first and last points already appended
+            for (uint32 i = 1; i < lastIndex; ++i)
+            {
+                Vector3 offset = middle - points[i];
+                data.appendPackXYZ(offset.x, offset.y, offset.z);
+            }
+        /*}
         else
         {
-                data << uint32(1);
-                TC_LOG_ERROR("maps","%s : totaltime = 0!\n",__PRETTY_FUNCTION__);
-        }
-        data << uint32((path.size()/3)-1);
-        if ( !catmull_rom )
-        {
-                float midpointx = (path[0]+path[path.size()-3])*0.5;
-                float midpointy = (path[1]+path[path.size()-2])*0.5;
-                float midpointz = (path[2]+path[path.size()-1])*0.5;
-                for ( int i = 1; i < path.size()/3; i++)
-                {
-                        if ( i == 1 )
-                        {
-                                data << path[path.size()-3]<< path[path.size()-2] << path[path.size()-1];
-                        }else{
-                                data.appendPackXYZ(midpointx-path[i*3+0],midpointy-path[i*3+1],midpointz-path[i*3+2]);
-                        }
-                }
-        }else{
-                for ( int i = 1; i < path.size()/3; i++)
-                {
-                        TC_LOG_DEBUG("maps","WPMM: %f %f %f",path[i*3], path[i*3+1], path[i*3+2]);
-                        data << path[i*3]<< path[i*3+1] << path[i*3+2];
+            for ( int i = 1; i < lastIndex; i++)
+            {
+                p = points[i];
+                sLog->outDebug(LOG_FILTER_MAPS,"WPMM: %f %f %f", p.x, p.y, p.z);
+                data << p.x << p.y << p.z;
+            }
 
-                }
+        }*/
+    }
 
-        }
-
-        SendMessageToSet(&data, true);
-
-        AddUnitState(UNIT_STATE_MOVE);
+    SendMessageToSet(&data, true);
+    AddUnitState(UNIT_STATE_MOVE);
 }
 
 

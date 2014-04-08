@@ -171,7 +171,7 @@ template void FleeingMovementGenerator<Creature>::DoReset(Creature*);
 template bool FleeingMovementGenerator<Player>::DoUpdate(Player*, uint32);
 template bool FleeingMovementGenerator<Creature>::DoUpdate(Creature*, uint32);
 
-void TimedFleeingMovementGenerator::Finalize(Unit* owner)
+void TimedFleeingMovementGenerator::DoFinalize(Unit* owner)
 {
     owner->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
     owner->ClearUnitState(UNIT_STATE_FLEEING|UNIT_STATE_FLEEING_MOVE);
@@ -185,7 +185,7 @@ void TimedFleeingMovementGenerator::Finalize(Unit* owner)
     }
 }
 
-bool TimedFleeingMovementGenerator::Update(Unit* owner, uint32 time_diff)
+bool TimedFleeingMovementGenerator::DoUpdate(Unit* owner, uint32 time_diff)
 {
     if (!owner->IsAlive())
         return false;
@@ -202,5 +202,5 @@ bool TimedFleeingMovementGenerator::Update(Unit* owner, uint32 time_diff)
 
     // This calls grant-parent Update method hiden by FleeingMovementGenerator::Update(Creature &, uint32) version
     // This is done instead of casting Unit& to Creature& and call parent method, then we can use Unit directly
-    return MovementGeneratorMedium< Creature, FleeingMovementGenerator<Creature> >::Update(owner, time_diff);
+    return MovementGeneratorMedium< Creature, FleeingMovementGenerator<Creature> >::DoUpdate(owner, time_diff);
 }

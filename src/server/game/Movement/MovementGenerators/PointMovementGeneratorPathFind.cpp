@@ -140,14 +140,14 @@ template <> void PointMovementGeneratorPathFind<Creature>::MovementInform ( Crea
         unit.AI()->MovementInform ( POINT_MOTION_TYPE, id );
 }
 
-template void PointMovementGeneratorPathFind<Player>::Initialize ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::Initialize ( Creature& );
-template void PointMovementGeneratorPathFind<Player>::Finalize ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::Finalize ( Creature& );
-template void PointMovementGeneratorPathFind<Player>::Reset ( Player& );
-template void PointMovementGeneratorPathFind<Creature>::Reset ( Creature& );
-template bool PointMovementGeneratorPathFind<Player>::Update ( Player &, const uint32 & );
-template bool PointMovementGeneratorPathFind<Creature>::Update ( Creature&, const uint32 & );
+template void PointMovementGeneratorPathFind<Player>::DoInitialize ( Player& );
+template void PointMovementGeneratorPathFind<Creature>::DoInitialize ( Creature& );
+template void PointMovementGeneratorPathFind<Player>::DoFinalize ( Player& );
+template void PointMovementGeneratorPathFind<Creature>::DoFinalize ( Creature& );
+template void PointMovementGeneratorPathFind<Player>::DoReset ( Player& );
+template void PointMovementGeneratorPathFind<Creature>::DoReset ( Creature& );
+template bool PointMovementGeneratorPathFind<Player>::DoUpdate ( Player &, const uint32 & );
+template bool PointMovementGeneratorPathFind<Creature>::DoUpdate ( Creature&, const uint32 & );
 template PointMovementGeneratorPathFind<Player>::~PointMovementGeneratorPathFind();
 template PointMovementGeneratorPathFind<Creature>::~PointMovementGeneratorPathFind();
 template PathFindingState* PointMovementGeneratorPathFind<Player>::GetPathFindingState();

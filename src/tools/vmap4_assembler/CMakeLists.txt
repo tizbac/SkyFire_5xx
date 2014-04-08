@@ -24,7 +24,7 @@ add_executable(vmap4assembler VMapAssembler.cpp)
 add_dependencies(vmap4assembler storm)
 
 target_link_libraries(vmap4assembler
-  collision
+  skyfirecollision skyfireshared 
   g3dlib
   ${ZLIB_LIBRARIES}
 )

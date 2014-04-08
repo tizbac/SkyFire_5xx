@@ -40,7 +40,7 @@ class TargetedMovementGeneratorMediumPathFind
         ~TargetedMovementGeneratorMediumPathFind();
 
     public:
-        bool DoUpdate(T &, const uint32 &);
+        bool DoUpdate(T *, const uint32 &);
         Unit* GetTarget() const { return i_target.getTarget(); }
 
         void unitSpeedChanged() { i_recalculateTravel=true; }
@@ -48,7 +48,7 @@ class TargetedMovementGeneratorMediumPathFind
         PathFindingState* GetPathFindingState();
         void SetPathFindingState(PathFindingState* st);
     protected:
-        void _setTargetLocation(T &);
+        void _setTargetLocation(T* owner);
 
         TimeTrackerSmall i_recheckDistance;
         float i_offset;
@@ -72,16 +72,16 @@ class ChaseMovementGeneratorPathFind : public TargetedMovementGeneratorMediumPat
 
         MovementGeneratorType GetMovementGeneratorType() { return CHASE_MOTION_TYPE; }
 
-        void Initialize(T &);
-        void Finalize(T &);
-        void Reset(T &);
-        void MovementInform(T &);
+        void DoInitialize(T *);
+        void DoFinalize(T* owner);
+        void DoReset(T* owner);
+        void DoMovementInform(T *);
 
-        static void _clearUnitStateMove(T &u) { u.ClearUnitState(UNIT_STATE_CHASE_MOVE); }
-        static void _addUnitStateMove(T &u)  { u.AddUnitState(UNIT_STATE_CHASE_MOVE); }
+        static void _clearUnitStateMove(T *u) { u->ClearUnitState(UNIT_STATE_CHASE_MOVE); }
+        static void _addUnitStateMove(T *u)  { u->AddUnitState(UNIT_STATE_CHASE_MOVE); }
         bool EnableWalking() const { return false;}
-        bool _lostTarget(T &u) const { return u.getVictim() != this->GetTarget(); }
-        void _reachTarget(T &);
+        bool _lostTarget(T *u) const { return u->GetVictim() != this->GetTarget(); }
+        void _reachTarget(T* owner);
 };
 
 template<class T>
@@ -96,18 +96,18 @@ class FollowMovementGeneratorPathFind : public TargetedMovementGeneratorMediumPa
 
         MovementGeneratorType GetMovementGeneratorType() { return FOLLOW_MOTION_TYPE; }
 
-        void Initialize(T &);
-        void Finalize(T &);
-        void Reset(T &);
-        void MovementInform(T &);
+        void DoInitialize(T *);
+        void DoFinalize(T *);
+        void DoReset(T *);
+        void DoMovementInform(T *);
 
-        static void _clearUnitStateMove(T &u) { u.ClearUnitState(UNIT_STATE_FOLLOW_MOVE); }
-        static void _addUnitStateMove(T &u)  { u.AddUnitState(UNIT_STATE_FOLLOW_MOVE); }
+        static void _clearUnitStateMove(T *u) { u->ClearUnitState(UNIT_STATE_FOLLOW_MOVE); }
+        static void _addUnitStateMove(T *u)  { u->AddUnitState(UNIT_STATE_FOLLOW_MOVE); }
         bool EnableWalking() const;
-        bool _lostTarget(T &) const { return false; }
-        void _reachTarget(T &) {}
+        bool _lostTarget(T *) const { return false; }
+        void _reachTarget(T *) {}
     private:
-        void _updateSpeed(T &u);
+        void _updateSpeed(T *u);
 };
 
 #endif

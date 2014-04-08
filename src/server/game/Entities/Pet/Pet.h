@@ -42,7 +42,7 @@ class Pet : public Guardian
 {
     public:
         explicit Pet(Player* owner, PetType type = MAX_PET_TYPE);
-        virtual ~Pet();
+        ~Pet();
 
         void AddToWorld();
         void RemoveFromWorld();

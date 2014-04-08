@@ -108,7 +108,7 @@ void PathFindingUpdateThread(uint32 id,World * world)
     uint32 timediff = 20;
     printf("Thread di pathfinding con id %u creato",id);
     if ( !world->getBoolConfigMT(CONFIG_PATHFINDING_ENABLED) )
-      sLog->outError("Pathfinding disabilitato!");
+      sLog->outError("console","Pathfinding disabilitato!");
     while ( world->destroying == false )
     {
         boost::system_time st = boost::get_system_time();
@@ -499,11 +499,11 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_ENABLE_SINFO_LOGIN] = sConfigMgr->GetIntDefault("Server.LoginInfo", 0);
 
     ///- Pathfinding
-    m_bool_configs[CONFIG_PATHFINDING_ENABLED] = ConfigMgr::GetBoolDefault("Pathfinding.Enabled",true);
-    m_int_configs[CONFIG_PATHFINDING_THREADS] = ConfigMgr::GetIntDefault("Pathfinding.Threads",2);
+    m_bool_configs[CONFIG_PATHFINDING_ENABLED] = sConfigMgr->GetBoolDefault("Pathfinding.Enabled",true);
+    m_int_configs[CONFIG_PATHFINDING_THREADS] = sConfigMgr->GetIntDefault("Pathfinding.Threads",2);
     if ( pfthreads.size() != m_int_configs[CONFIG_PATHFINDING_THREADS] )
     {
-      sLog->outString("(Re)spawn dei thread di pathfinding...");
+      sLog->outDebug("Console", "(Re)spawn dei thread di pathfinding...");
       destroying = true;
       for ( int i = 0; i < pfthreads.size(); i++)
       {
@@ -734,9 +734,9 @@ void World::LoadConfigSettings(bool reload)
     /// @todo Add MonsterSight and GuarderSight (with meaning) in worldserver.conf or put them as define
     m_float_configs[CONFIG_SIGHT_MONSTER] = sConfigMgr->GetFloatDefault("MonsterSight", 50);
     m_float_configs[CONFIG_SIGHT_GUARDER] = sConfigMgr->GetFloatDefault("GuarderSight", 50);
-    m_float_configs[CONFIG_PATHFINDING_STEPSIZE] = ConfigMgr::GetFloatDefault("PathfindingStepSize",0.3);
-    m_int_configs[CONFIG_PATHFINDING_MAX_PATH_SIZE] = ConfigMgr::GetIntDefault("MaxPathfindingPolygons",1000);
-    m_int_configs[CONFIG_PATHFINDING_MAX_WAYPOINTS] = ConfigMgr::GetIntDefault("MaxPathfindingWaypoints",20);
+    m_float_configs[CONFIG_PATHFINDING_STEPSIZE] = sConfigMgr->GetFloatDefault("PathfindingStepSize",0.3);
+    m_int_configs[CONFIG_PATHFINDING_MAX_PATH_SIZE] = sConfigMgr->GetIntDefault("MaxPathfindingPolygons",1000);
+    m_int_configs[CONFIG_PATHFINDING_MAX_WAYPOINTS] = sConfigMgr->GetIntDefault("MaxPathfindingWaypoints",20);
 
     if (reload)
     {

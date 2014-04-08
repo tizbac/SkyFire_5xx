@@ -57,7 +57,7 @@ class AssistanceMovementGenerator : public PointMovementGenerator<Creature>
             PointMovementGenerator<Creature>(0, _x, _y, _z, true) { }
 
         MovementGeneratorType GetMovementGeneratorType() { return ASSISTANCE_MOTION_TYPE; }
-        void Finalize(Unit*);
+        void DoFinalize(Unit*);
 };
 
 // Does almost nothing - just doesn't allows previous movegen interrupt current effect.
@@ -65,10 +65,10 @@ class EffectMovementGenerator : public MovementGenerator
 {
     public:
         explicit EffectMovementGenerator(uint32 Id) : m_Id(Id) { }
-        void Initialize(Unit*) { }
-        void Finalize(Unit*);
-        void Reset(Unit*) { }
-        bool Update(Unit*, uint32);
+        void DoInitialize(Unit*) { }
+        void DoFinalize(Unit*);
+        void DoReset(Unit*) { }
+        bool DoUpdate(Unit*, uint32);
         MovementGeneratorType GetMovementGeneratorType() { return EFFECT_MOTION_TYPE; }
     private:
         uint32 m_Id;

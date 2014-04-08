@@ -51,8 +51,8 @@ class TimedFleeingMovementGenerator : public FleeingMovementGenerator<Creature>
             i_totalFleeTime(time) { }
 
         MovementGeneratorType GetMovementGeneratorType() { return TIMED_FLEEING_MOTION_TYPE; }
-        bool Update(Unit*, uint32);
-        void Finalize(Unit*);
+        bool DoUpdate(Unit*, uint32);
+        void DoFinalize(Unit*);
 
     private:
         TimeTracker i_totalFleeTime;

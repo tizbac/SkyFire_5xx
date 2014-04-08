@@ -18,7 +18,7 @@
 
 #ifndef DETOURNAVMESH_H
 #define DETOURNAVMESH_H
-#warning "è stato usato"
+#define warning "è stato usato"
 
 #include "DetourAlloc.h"
 #include "DetourStatus.h"

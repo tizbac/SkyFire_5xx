@@ -40,86 +40,90 @@ HomeMovementGeneratorPathFind<Creature>::~HomeMovementGeneratorPathFind()
 
 
 }
-void HomeMovementGeneratorPathFind<Creature>::Initialize ( Creature & owner )
+void HomeMovementGeneratorPathFind<Creature>::DoInitialize ( Creature * owner )
 {
-    owner.AddUnitState ( UNIT_STATE_EVADE );
-    guid = owner.GetGUID();
+    owner->AddUnitState ( UNIT_STATE_EVADE );
+    guid = owner->GetGUID();
     _setTargetLocation ( owner );
 }
 
-void HomeMovementGeneratorPathFind<Creature>::Reset ( Creature & )
+void HomeMovementGeneratorPathFind<Creature>::DoReset ( Creature * )
 {
 }
 
-void HomeMovementGeneratorPathFind<Creature>::_setTargetLocation ( Creature & owner )
+void HomeMovementGeneratorPathFind<Creature>::_setTargetLocation ( Creature * owner )
 {
     if ( !&owner )
         return;
 
-    if ( owner.HasUnitState ( UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED ) )
+    if ( owner->HasUnitState ( UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED ) )
         return;
 
     float x, y, z, o;
     // at apply we can select more nice return points base at current movegen
-    //if (owner.GetMotionMaster()->empty() || !owner.GetMotionMaster()->top()->GetResetPosition(owner,x,y,z))
+    //if (owner->GetMotionMaster()->empty() || !owner->GetMotionMaster()->top()->GetResetPosition(owner,x,y,z))
     //{
-    owner.GetHomePosition ( x, y, z, o );
+    owner->GetHomePosition ( x, y, z, o );
 
-    if ( !GetPathFindingState() || !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
-        SetPathFindingState ( owner.GetMap()->GetPathFindingMgr()->AddPathfind ( ( Unit* ) &owner,x,y,z,owner.GetSpeed ( MOVE_RUN ) ) );
+    if ( !GetPathFindingState() || !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) )
+        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( ( Unit* ) &owner,x,y,z,owner->GetSpeed ( MOVE_RUN ) ) );
     else
         GetPathFindingState()->UpdateDestination ( x,y,z,0 );
     arrived = false;
-    owner.ClearUnitState ( UNIT_STATE_ALL_STATE & ~UNIT_STATE_EVADE );
+    owner->ClearUnitState ( UNIT_STATE_ALL_STATE & ~UNIT_STATE_EVADE );
 }
 
-bool HomeMovementGeneratorPathFind<Creature>::Update ( Creature &owner, const uint32 /*time_diff*/ )
+bool HomeMovementGeneratorPathFind<Creature>::DoUpdate ( Creature *owner, const uint32 /*time_diff*/ )
 {
-    owner.GetMap()->GetPathFindingMgr()->listsmutex.lock();
+    owner->GetMap()->GetPathFindingMgr()->listsmutex.lock();
     
-    if ( !GetPathFindingState() || !owner.GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
+    if ( !GetPathFindingState() || !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
         _setTargetLocation ( owner );
     }
     float x,y,z,o;
-    owner.GetHomePosition ( x,y,z,o );
+    owner->GetHomePosition ( x,y,z,o );
     if ( GetPathFindingState() && GetPathFindingState()->HasArrived() ) {
-        owner.AddUnitMovementFlag ( MOVEMENTFLAG_WALKING );
+        owner->AddUnitMovementFlag ( MOVEMENTFLAG_WALKING );
 
         // restore orientation of not moving creature at returning to home
-        if ( owner.GetDefaultMovementType() == IDLE_MOTION_TYPE ) {
+        if ( owner->GetDefaultMovementType() == IDLE_MOTION_TYPE ) {
             //sLog->outDebug(LOG_FILTER_MAPS, "Entering HomeMovement::GetDestination(z,y,z)");
             
-            owner.SetOrientation ( o );
-            WorldPacket packet;
-            owner.BuildHeartBeatMsg ( &packet );
-            owner.SendMessageToSet ( &packet, false );
+            owner->SetOrientation ( o );
+            Movement::MoveSplineInit init(owner);
+            init.SetFacing(o);
+            init.MoveTo(x, y, z);
+            init.SetWalk(owner->HasUnitMovementFlag(MOVEMENTFLAG_WALKING));
+            init.Launch();
         }
-        owner.GetMap()->GetPathFindingMgr()->listsmutex.unlock();
+        owner->GetMap()->GetPathFindingMgr()->listsmutex.unlock();
 
         arrived = true;
     } else if ( GetPathFindingState() && GetPathFindingState()->status == PATHFINDINGSTATUS_DEST_UNREACHABLE ) {
-        if ( owner.GetDefaultMovementType() == IDLE_MOTION_TYPE ) {
+        if ( owner->GetDefaultMovementType() == IDLE_MOTION_TYPE ) {
             //sLog->outDebug(LOG_FILTER_MAPS, "Entering HomeMovement::GetDestination(z,y,z)");
-            owner.SetOrientation ( o );
-            WorldPacket packet;
-            owner.BuildHeartBeatMsg ( &packet );
-            owner.SendMessageToSet ( &packet, false );
+            owner->SetOrientation ( o );
+            Movement::MoveSplineInit init(owner);
+            init.SetFacing(o);
+            init.MoveTo(x, y, z);
+            init.SetWalk(owner->HasUnitMovementFlag(MOVEMENTFLAG_WALKING));
+            init.Launch();
         }
-        owner.UpdatePosition ( owner.GetHomePosition(),true );
-        owner.StopMoving();
+        owner->UpdatePosition ( owner->GetHomePosition(),true );
+        owner->StopMoving();
         arrived = true;
     }
-    owner.GetMap()->GetPathFindingMgr()->listsmutex.unlock();
+    owner->GetMap()->GetPathFindingMgr()->listsmutex.unlock();
 
     return !arrived;
 }
 
-void HomeMovementGeneratorPathFind<Creature>::Finalize ( Creature& owner )
+void HomeMovementGeneratorPathFind<Creature>::DoFinalize ( Creature* owner )
 {
     if ( arrived ) {
-        owner.ClearUnitState ( UNIT_STATE_EVADE );
-        owner.SetWalk ( true );
-        owner.LoadCreaturesAddon ( true );
-        owner.AI()->JustReachedHome();
+        owner->ClearUnitState ( UNIT_STATE_EVADE );
+        owner->SetWalk ( true );
+        owner->LoadCreaturesAddon ( true );
+        owner->AI()->JustReachedHome();
     }
 }

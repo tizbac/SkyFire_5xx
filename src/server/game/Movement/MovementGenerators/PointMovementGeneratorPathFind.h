@@ -30,10 +30,10 @@ class PointMovementGeneratorPathFind
         PointMovementGeneratorPathFind(uint32 _id, float _x, float _y, float _z, float _speed = 0.0f, bool ischarge = false) : id(_id),
             i_x(_x), i_y(_y), i_z(_z), speed(_speed), arrived(false), m_ischarge(ischarge) {}
         ~PointMovementGeneratorPathFind();
-        void Initialize(T &);
-        void Finalize(T &);
-        void Reset(T &);
-        bool Update(T &, const uint32 &);
+        void DoInitialize(T &);
+        void DoFinalize(T &);
+        void DoReset(T &);
+        bool DoUpdate(T &, const uint32 &);
 
         void MovementInform(T &);
 

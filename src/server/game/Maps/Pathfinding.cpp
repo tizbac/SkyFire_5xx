@@ -748,7 +748,7 @@ void PathFindingState::UpdateDestination(float destx, float desty, float destz, 
         this->desty = desty;
         this->destz = destz;
         if ( lastx == destx && lasty == desty && lastz == destz )
-            sLog->outDebug(LOG_FILTER_GENERAL, "PF: Warning: attempt to update destination to current position!");
+            TC_LOG_DEBUG("maps", "PF: Warning: attempt to update destination to current position!");
         
         mustrecalculate = true;
         if ( fromWorldThread )
@@ -1568,7 +1568,7 @@ mEndRef = oldEndRef;
         }
         navQuery->findNearestPoly(endPos,mPolyPickingExtents,mPathFilter,&mEndRef,NULL);
     } else {
-        sLog->outDebug(LOG_FILTER_GENERAL, "Impossibile trovare la ref del pet owner (%s)!",pfstate->petownerposition.as_str().c_str());
+        TC_LOG_DEBUG("maps", "Impossibile trovare la ref del pet owner (%s)!",pfstate->petownerposition.as_str().c_str());
 
     }
 

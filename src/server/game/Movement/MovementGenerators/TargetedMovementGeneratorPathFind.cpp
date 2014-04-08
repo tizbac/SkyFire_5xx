@@ -24,7 +24,7 @@
 #include "World.h"
 #include "MoveSplineInit.h"
 #include "MoveSpline.h"
-
+#include "Pet.h"
 #include "Player.h"
 #include "Pathfinding.h"
 #include <cmath>
@@ -60,7 +60,7 @@ template <class T,typename D> TargetedMovementGeneratorMediumPathFind<T,D>::~Tar
 }
 
 template<class T, typename D>
-void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner )
+void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T *owner )
 {
     bool pfexisting = false;
     if ( owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
@@ -99,15 +99,15 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     }*/
     if (!i_offset)
     {
-        if (i_target->IsWithinMeleeRange(&owner) && pfexisting)
+        if (i_target->IsWithinMeleeRange(owner) && pfexisting)
             return;
 
         // to nearest random contact position
-        i_target->GetRandomContactPoint(&owner, x, y, z, 0, MELEE_RANGE - 0.5f);
+        i_target->GetRandomContactPoint(owner, x, y, z, 0, MELEE_RANGE - 0.5f);
     }
     else
     {
-        if (i_target->IsWithinDistInMap(&owner, i_offset + 1.0f) && pfexisting)
+        if (i_target->IsWithinDistInMap(owner, i_offset + 1.0f) && pfexisting)
             return;
         // to at i_offset distance from target and i_angle from target facing
         i_target->GetClosePoint(x, y, z, owner->GetObjectSize(), i_offset, i_angle);
@@ -143,7 +143,7 @@ void TargetedMovementGeneratorMediumPathFind<T,D>::_setTargetLocation ( T &owner
     init.Launch();*/
     if ( !pfexisting )
     {
-        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( &owner,x,y,z,owner->GetSpeed(MOVE_RUN) ) );
+        SetPathFindingState ( owner->GetMap()->GetPathFindingMgr()->AddPathfind ( owner,x,y,z,owner->GetSpeed(MOVE_RUN) , false) );
     }
     if ( owner->IsControlledByPlayer() && owner->HasUnitState(UNIT_STATE_FOLLOW))
     {
@@ -223,7 +223,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
     if ( !owner->GetMap()->GetPathFindingMgr()->IsValid ( GetPathFindingState() ) ) {
         pathfinding_started = false;
     }
-    if ( !owner->isAlive() )
+    if ( !owner->IsAlive() )
         return true;
 
     if ( owner->HasUnitState ( UNIT_STATE_NOT_MOVE ) ) {
@@ -278,7 +278,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
     }
 
     if ( pathfinding_started && GetPathFindingState()->arrived ) { /* GetPathFindingState() è valido per forza dato che Update non è chiamato prima di initialize */
-        static_cast<D*> ( this )->MovementInform ( owner );
+        static_cast<D*> ( this )->DoMovementInform ( owner );
         if ( i_angle == 0.f && !owner->HasInArc ( 0.01f, i_target.getTarget() ) )
             owner->SetInFront ( i_target.getTarget() );
 
@@ -315,7 +315,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
     }
 
     if ( unreachabletimer > 5000 ) {
-        Creature * c = ( &owner )->ToCreature();
+        Creature * c = owner->ToCreature();
         if ( c ) {
             if ( c->IsControlledByPlayer() ) {
                 Unit * owner = c->GetOwner();
@@ -333,7 +333,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
             } else {
                 if ( !c->GetMap()->IsDungeon() )
                 {
-                    if ( c->AI() && c->getVictim() == i_target.getTarget() )
+                    if ( c->AI() && c->GetVictim() == i_target.getTarget() )
                         c->GetMap()->mtcalls->post ( boost::bind ( &CreatureEvadeDelayed,c->GetGUID() ) );
                 }
             }
@@ -373,7 +373,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
             if ( owner->GetSpeed ( MOVE_RUN ) > 0.0 )
                 GetPathFindingState()->speed = calc_speed;
             else
-                sLog->outError ( "TargetedMovementGenerator: Velocità non valida %f",owner->GetSpeed ( MOVE_RUN ) );
+                TC_LOG_ERROR("movement", "PF:TargetedMovementGenerator: Velocità non valida %f",owner->GetSpeed ( MOVE_RUN ) );
             GetPathFindingState()->mustrecalculate = true;
             //printf("Nuova velocità\n");
         }
@@ -385,14 +385,14 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T *owner, const ui
 
 //-----------------------------------------------//
 template<class T>
-void ChaseMovementGeneratorPathFind<T>::_reachTarget ( T &owner )
+void ChaseMovementGeneratorPathFind<T>::_reachTarget ( T *owner )
 {
     if ( owner->IsWithinMeleeRange ( this->i_target.getTarget() ) )
         owner->Attack ( this->i_target.getTarget(),true );
 }
 
 template<>
-void ChaseMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
+void ChaseMovementGeneratorPathFind<Player>::DoInitialize ( Player *owner )
 {
     owner->AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
     {
@@ -406,7 +406,7 @@ void ChaseMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
 }
 
 template<>
-void ChaseMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
+void ChaseMovementGeneratorPathFind<Creature>::DoInitialize ( Creature *owner )
 {
     owner->SetWalk ( false );
     owner->AddUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
@@ -427,28 +427,28 @@ void ChaseMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
 }
 
 template<class T>
-void ChaseMovementGeneratorPathFind<T>::Finalize ( T &owner )
+void ChaseMovementGeneratorPathFind<T>::DoFinalize ( T *owner )
 {
     owner->ClearUnitState ( UNIT_STATE_CHASE|UNIT_STATE_CHASE_MOVE );
 }
 
 template<class T>
-void ChaseMovementGeneratorPathFind<T>::Reset ( T &owner )
+void ChaseMovementGeneratorPathFind<T>::DoReset ( T *owner )
 {
-    Initialize ( owner );
+    DoInitialize ( owner );
 }
 
 template<class T>
-void ChaseMovementGeneratorPathFind<T>::MovementInform ( T & /*unit*/ )
+void ChaseMovementGeneratorPathFind<T>::DoMovementInform ( T * /*unit*/ )
 {
 }
 
 template<>
-void ChaseMovementGeneratorPathFind<Creature>::MovementInform ( Creature &unit )
+void ChaseMovementGeneratorPathFind<Creature>::DoMovementInform ( Creature *unit )
 {
     // Pass back the GUIDLow of the target. If it is pet's owner then PetAI will handle
-    if ( unit.AI() )
-        unit.AI()->MovementInform ( CHASE_MOTION_TYPE, i_target.getTarget()->GetGUIDLow() );
+    if ( unit->AI() )
+        unit->AI()->MovementInform ( CHASE_MOTION_TYPE, i_target.getTarget()->GetGUIDLow() );
 }
 
 //-----------------------------------------------//
@@ -465,25 +465,25 @@ bool FollowMovementGeneratorPathFind<Player>::EnableWalking() const
 }
 
 template<>
-void FollowMovementGeneratorPathFind<Player>::_updateSpeed ( Player &/*u*/ )
+void FollowMovementGeneratorPathFind<Player>::_updateSpeed ( Player */*u*/ )
 {
     // nothing to do for Player
 }
 
 template<>
-void FollowMovementGeneratorPathFind<Creature>::_updateSpeed ( Creature &u )
+void FollowMovementGeneratorPathFind<Creature>::_updateSpeed ( Creature *u )
 {
-    u.UpdateSpeed ( MOVE_RUN,true );
-    u.UpdateSpeed ( MOVE_WALK,true );
-    u.UpdateSpeed ( MOVE_SWIM,true );
+    u->UpdateSpeed ( MOVE_RUN,true );
+    u->UpdateSpeed ( MOVE_WALK,true );
+    u->UpdateSpeed ( MOVE_SWIM,true );
 
     float calc_speed;
-    calc_speed = u.GetSpeed( Movement::SelectSpeedType(u.GetUnitMovementFlags()));
+    calc_speed = u->GetSpeed( Movement::SelectSpeedType(u->GetUnitMovementFlags()));
     
-    if ( u.ToCreature() && ( u.ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
+    if ( u->ToCreature() && ( u->ToCreature()->GetOwnerGUID()  ) && i_target.isValid())
     {
         float player_speed = i_target->GetSpeed(MOVE_RUN);
-        calc_speed = u.m_speed_rate[MOVE_RUN]*player_speed*1.15;
+        calc_speed = u->m_speed_rate[MOVE_RUN]*player_speed*1.15;
         
     }
 
@@ -492,21 +492,21 @@ void FollowMovementGeneratorPathFind<Creature>::_updateSpeed ( Creature &u )
     
     if ( GetPathFindingState() ) {
         if ( GetPathFindingState()->speed != calc_speed ) {
-            if ( u.GetSpeed ( MOVE_RUN ) > 0.0 )
+            if ( u->GetSpeed ( MOVE_RUN ) > 0.0 )
                 GetPathFindingState()->speed = calc_speed;
             else
-                sLog->outError ( "TargetedMovementGenerator: Velocità non valida %f",u.GetSpeed ( MOVE_RUN ) );
+                sLog->outError ("Console", "TargetedMovementGenerator: Velocità non valida %f",u->GetSpeed( MOVE_RUN ));
             GetPathFindingState()->mustrecalculate = true;
             //printf("Nuova velocità\n");
         }
     }
-    if ( ! ( ( Creature& ) u ).isPet() || !i_target.isValid() || i_target->GetGUID() != u.GetOwnerGUID() )
+    if ( ! ( ( Creature* ) u )->IsPet() || !i_target.isValid() || i_target->GetGUID() != u->GetOwnerGUID() )
         return;
 
 }
 
 template<>
-void FollowMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
+void FollowMovementGeneratorPathFind<Player>::DoInitialize ( Player *owner )
 {
     /*{
         boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
@@ -525,7 +525,7 @@ void FollowMovementGeneratorPathFind<Player>::Initialize ( Player &owner )
 }
 
 template<>
-void FollowMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
+void FollowMovementGeneratorPathFind<Creature>::DoInitialize ( Creature  *owner )
 {
     /*{
         boost::mutex::scoped_lock lock ( owner->GetMap()->GetPathFindingMgr()->listsmutex );
@@ -544,7 +544,7 @@ void FollowMovementGeneratorPathFind<Creature>::Initialize ( Creature &owner )
 }
 
 template<class T>
-void FollowMovementGeneratorPathFind<T>::Finalize ( T &owner )
+void FollowMovementGeneratorPathFind<T>::DoFinalize ( T* owner)
 {
     owner->ClearUnitState ( UNIT_STATE_FOLLOW|UNIT_STATE_FOLLOW_MOVE );
     {
@@ -554,33 +554,33 @@ void FollowMovementGeneratorPathFind<T>::Finalize ( T &owner )
 }
 
 template<class T>
-void FollowMovementGeneratorPathFind<T>::Reset ( T &owner )
+void FollowMovementGeneratorPathFind<T>::DoReset ( T* owner )
 {
-    Initialize ( owner );
+    DoInitialize ( owner );
 }
 
 template<class T>
-void FollowMovementGeneratorPathFind<T>::MovementInform ( T & /*unit*/ )
+void FollowMovementGeneratorPathFind<T>::DoMovementInform ( T * /*unit*/ )
 {
 }
 
 template<>
-void FollowMovementGeneratorPathFind<Creature>::MovementInform ( Creature &unit )
+void FollowMovementGeneratorPathFind<Creature>::DoMovementInform ( Creature *unit )
 {
     // Pass back the GUIDLow of the target. If it is pet's owner then PetAI will handle
-    if ( unit.AI() )
-        unit.AI()->MovementInform ( FOLLOW_MOTION_TYPE, i_target.getTarget()->GetGUIDLow() );
+    if ( unit->AI() )
+        unit->AI()->MovementInform ( FOLLOW_MOTION_TYPE, i_target.getTarget()->GetGUIDLow() );
 }
 
 //-----------------------------------------------//
-template void TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::_setTargetLocation ( Player & );
-template void TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::_setTargetLocation ( Player & );
-template void TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::_setTargetLocation ( Creature & );
-template void TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::_setTargetLocation ( Creature & );
-template bool TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::Update ( Player &, const uint32 & );
-template bool TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::Update ( Player &, const uint32 & );
-template bool TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::Update ( Creature &, const uint32 & );
-template bool TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::Update ( Creature &, const uint32 & );
+template void TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::_setTargetLocation ( Player * );
+template void TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::_setTargetLocation ( Player * );
+template void TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::_setTargetLocation ( Creature * );
+template void TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::_setTargetLocation ( Creature * );
+template bool TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::DoUpdate ( Player *, const uint32 & );
+template bool TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::DoUpdate ( Player *, const uint32 & );
+template bool TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGeneratorPathFind<Creature> >::DoUpdate ( Creature *, const uint32 & );
+template bool TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::DoUpdate ( Creature *, const uint32 & );
 
 template TargetedMovementGeneratorMediumPathFind<Player,ChaseMovementGeneratorPathFind<Player> >::~TargetedMovementGeneratorMediumPathFind();
 template TargetedMovementGeneratorMediumPathFind<Player,FollowMovementGeneratorPathFind<Player> >::~TargetedMovementGeneratorMediumPathFind();
@@ -588,17 +588,17 @@ template TargetedMovementGeneratorMediumPathFind<Creature,ChaseMovementGenerator
 template TargetedMovementGeneratorMediumPathFind<Creature,FollowMovementGeneratorPathFind<Creature> >::~TargetedMovementGeneratorMediumPathFind();
 
 
-template void ChaseMovementGeneratorPathFind<Player>::_reachTarget ( Player & );
-template void ChaseMovementGeneratorPathFind<Creature>::_reachTarget ( Creature & );
-template void ChaseMovementGeneratorPathFind<Player>::Finalize ( Player & );
-template void ChaseMovementGeneratorPathFind<Creature>::Finalize ( Creature & );
-template void ChaseMovementGeneratorPathFind<Player>::Reset ( Player & );
-template void ChaseMovementGeneratorPathFind<Creature>::Reset ( Creature & );
-template void ChaseMovementGeneratorPathFind<Player>::MovementInform ( Player &unit );
+template void ChaseMovementGeneratorPathFind<Player>::_reachTarget ( Player * );
+template void ChaseMovementGeneratorPathFind<Creature>::_reachTarget ( Creature * );
+template void ChaseMovementGeneratorPathFind<Player>::DoFinalize ( Player * );
+template void ChaseMovementGeneratorPathFind<Creature>::DoFinalize ( Creature * );
+template void ChaseMovementGeneratorPathFind<Player>::DoReset ( Player * );
+template void ChaseMovementGeneratorPathFind<Creature>::DoReset ( Creature * );
+template void ChaseMovementGeneratorPathFind<Player>::DoMovementInform ( Player *unit );
 
-template void FollowMovementGeneratorPathFind<Player>::Finalize ( Player & );
-template void FollowMovementGeneratorPathFind<Creature>::Finalize ( Creature & );
-template void FollowMovementGeneratorPathFind<Player>::Reset ( Player & );
-template void FollowMovementGeneratorPathFind<Creature>::Reset ( Creature & );
-template void FollowMovementGeneratorPathFind<Player>::MovementInform ( Player &unit );
+template void FollowMovementGeneratorPathFind<Player>::DoFinalize ( Player * );
+template void FollowMovementGeneratorPathFind<Creature>::DoFinalize ( Creature * );
+template void FollowMovementGeneratorPathFind<Player>::DoReset ( Player * );
+template void FollowMovementGeneratorPathFind<Creature>::DoReset ( Creature * );
+template void FollowMovementGeneratorPathFind<Player>::DoMovementInform ( Player *unit );
 

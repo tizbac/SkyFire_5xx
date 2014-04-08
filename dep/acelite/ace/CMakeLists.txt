@@ -352,7 +352,8 @@ endif()
 
 # Generate precompiled header
 if( USE_COREPCH )
-  add_cxx_pch(ace ${ace_PCH_HDR} ${ace_PCH_SRC})
+  set_target_properties(ace PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "PrecompiledHeaders/WinAcePCH.h")
+  cotire(ace)
 endif()
 
 install(TARGETS ace RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}")

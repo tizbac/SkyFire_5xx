@@ -120,7 +120,7 @@ template void PointMovementGenerator<Creature>::DoReset(Creature*);
 template bool PointMovementGenerator<Player>::DoUpdate(Player*, uint32);
 template bool PointMovementGenerator<Creature>::DoUpdate(Creature*, uint32);
 
-void AssistanceMovementGenerator::Finalize(Unit* unit)
+void AssistanceMovementGenerator::DoFinalize(Unit* unit)
 {
     unit->ToCreature()->SetNoCallAssistance(false);
     unit->ToCreature()->CallAssistance();
@@ -128,12 +128,12 @@ void AssistanceMovementGenerator::Finalize(Unit* unit)
         unit->GetMotionMaster()->MoveSeekAssistanceDistract(sWorld->getIntConfig(CONFIG_CREATURE_FAMILY_ASSISTANCE_DELAY));
 }
 
-bool EffectMovementGenerator::Update(Unit* unit, uint32)
+bool EffectMovementGenerator::DoUpdate(Unit* unit, uint32)
 {
     return !unit->movespline->Finalized();
 }
 
-void EffectMovementGenerator::Finalize(Unit* unit)
+void EffectMovementGenerator::DoFinalize(Unit* unit)
 {
     if (unit->GetTypeId() != TYPEID_UNIT)
         return;
