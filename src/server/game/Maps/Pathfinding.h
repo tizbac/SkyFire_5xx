@@ -220,7 +220,7 @@ class PathFindingMgr
     uint32 currdiff;
     uint32 pathfindingcount;
     PathFindingState* AddPathfind(Unit * u,float destx, float desty, float destz,float speed,bool isCharge = false);
-    void SendMonsterMoveGUID(uint64 guid,std::vector<float> path,uint32 time,uint32 timestamp, uint64 facingTarget);
+    void SendMonsterMoveGUID(uint64 guid,std::vector<float> path,float speed,uint32 timestamp, uint64 facingTarget);
     void PlayerRelocateGUID(uint64 guid,float x , float y,float z);
     void CreatureRelocateGUID(uint64 guid,float x , float y,float z);
     

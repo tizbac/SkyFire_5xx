@@ -1298,7 +1298,7 @@ class Unit : public WorldObject
         bool hastosendpath;
         uint32 remainingjumptime;    
         boost::mutex deletelock;
-        void SendMonsterMove(std::vector< float >& path, uint32 totaltime, uint32 id, bool catmull_rom, bool flying, uint64 facingTarget);
+        void SendMonsterMove(std::vector< float >& path, float velocity, uint32 id, bool catmull_rom, bool flying, uint64 facingTarget);
         void GetRandomContactPointBehind(const Unit* target, float &x, float &y, float &z, float distance2dMin, float distance2dMax) const;
         //--------
        

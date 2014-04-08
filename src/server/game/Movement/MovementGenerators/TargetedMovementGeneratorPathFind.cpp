@@ -285,7 +285,7 @@ bool TargetedMovementGeneratorMediumPathFind<T,D>::DoUpdate ( T* owner, uint32 t
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
         float allowed_dist = 0.3f;
         float dist = ( lastdestination - G3D::Vector3 ( i_target->GetPositionX(),i_target->GetPositionY(),i_target->GetPositionZ() ) ).squaredLength();
-        //sLog->outDebug(LOG_FILTER_MAPS,"<%s->%s> PF: allowed_dist=%f dist=%f",owner->GetName(),i_target->GetName(),allowed_dist*allowed_dist,dist);
+        TC_LOG_DEBUG("maps","<%s->%s> PF: allowed_dist=%f dist=%f",owner->GetName().c_str(),i_target->GetName().c_str(),allowed_dist*allowed_dist,dist);
         if ( dist >= allowed_dist * allowed_dist
             || (owner->IsPet() && i_target->IsWithinMeleeRange(owner) && (i_target->GetOrientation() != i_lastOrientation)))
         {

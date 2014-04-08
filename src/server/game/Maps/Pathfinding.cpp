@@ -278,7 +278,7 @@ bool NewContactPoint( TrinityVector3<double> target , float radius , std::vector
 
 
 ///Queste funzioni sono utilizzate sul thread del world per eseguire le azioni messe in coda dal pathfinding
-void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, uint32 time,uint32 id, uint64 facingTarget)
+void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, float speed,uint32 id, uint64 facingTarget)
 {
     Unit * u;
     u = ObjectAccessor::GetObjectInWorld(guid,(Unit*)NULL);
@@ -291,7 +291,7 @@ void PathFindingMgr::SendMonsterMoveGUID(uint64 guid,std::vector< float > path, 
     //sLog->outError("SendMonsterMoveGUID");
     bool fly;
     fly = ( u->GetUnitMovementFlags() & MOVEMENTFLAG_DISABLE_GRAVITY ) != 0;
-    u->SendMonsterMove(path,time,id,true,fly, facingTarget);
+    u->SendMonsterMove(path,speed,id,true,fly, facingTarget);
 
 }
 void PathFindingMgr::CreatureRelocateGUID(uint64 guid, float x, float y, float z)
@@ -501,7 +501,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
             TC_LOG_DEBUG("maps", "<%s>Percorso non calcolato oppure ricalcolazione necessaria, calcolo...",u->GetName().c_str());
             pfstate->Calculate(m,u);
             if ( pfstate->path.size() > 3 && !pfstate->pause && pfstate->status != PATHFINDINGSTATUS_DEST_UNREACHABLE )//Invia il percorso solo se valido
-                m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id, pfstate->facingTarget));
+                m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->speed,pfstate->id, pfstate->facingTarget));
             else
                 TC_LOG_DEBUG("maps", "<%s>Percorso calcolato non valido %u %d %u",u->GetName().c_str(),uint32(pfstate->path.size()),pfstate->pause,pfstate->status);
             pfstate->mustrecalculate = false;
@@ -535,7 +535,7 @@ void UpdateMapPathfinding(Map * m,uint32 timediff)
 
                 pfstate->Calculate(m,u);
                 if ( pfstate->path.size() > 3 )
-                    m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->waypointtime[pfstate->waypointtime.size()-1],pfstate->id, pfstate->facingTarget));
+                    m->mtcalls->post(boost::bind(&PathFindingMgr::SendMonsterMoveGUID,pMgr,u->GetGUID(),pfstate->path2send,pfstate->speed,pfstate->id, pfstate->facingTarget));
 
             }
             continue;
